@@ -12,16 +12,40 @@
     'dj terbaru 2026',
     'lagu sad terbaru 2026',
     'lagu galau terbaru 2026',
+    'lagu pop indonesia terbaru',
+    'lagu indie indonesia 2026',
+    'lagu r&b indonesia terbaru',
   ];
 
-  function _rq() {
-    return _queries[Math.floor(Math.random() * _queries.length)];
+  function _shuffle(arr) {
+    return arr.sort(() => Math.random() - 0.5);
+  }
+
+  function _pick(n) {
+    return _shuffle([..._queries]).slice(0, n);
   }
 
   onMount(async () => {
-    try { _ds = await _g9(_rq()); _p1k.set(_ds); }
-    catch (e) { _er = e.message; }
-    finally { _ld = false; }
+    try {
+      const picked = _pick(3);
+      const results = await Promise.all(picked.map(q => _g9(q)));
+      const seen = new Set();
+      const merged = [];
+      for (const list of results) {
+        for (const item of list) {
+          if (!seen.has(item.videoId)) {
+            seen.add(item.videoId);
+            merged.push(item);
+          }
+        }
+      }
+      _ds = _shuffle(merged);
+      _p1k.set(_ds);
+    } catch (e) {
+      _er = e.message;
+    } finally {
+      _ld = false;
+    }
   });
 
   async function _pl(item, idx) {
@@ -43,11 +67,14 @@
 <div style="max-width:560px;margin:0 auto;padding:24px 16px 0">
 
   <div style="margin-bottom:20px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-      <div style="width:5px;height:26px;border-radius:3px;background:linear-gradient(to bottom,#FFD700,#FFC300);flex-shrink:0"></div>
-      <h1 class="text-glow" style="font-size:1.5rem;font-weight:700;color:#FFD700;margin:0">Musictory</h1>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:5px;height:26px;border-radius:3px;background:linear-gradient(to bottom,#FFD700,#FFC300);flex-shrink:0"></div>
+        <h1 class="text-glow" style="font-size:1.5rem;font-weight:700;color:#FFD700;margin:0">Musictory</h1>
+      </div>
+      <span style="font-size:.65rem;color:rgba(255,215,0,.35);font-weight:600;letter-spacing:.04em">dev by givy</span>
     </div>
-    <p style="color:rgba(255,246,204,.45);font-size:.78rem;margin-left:15px">Lagu Trending 2025 🔥</p>
+    <p style="color:rgba(255,246,204,.45);font-size:.78rem;margin-left:15px">Lagu Trending 2026 🔥</p>
   </div>
 
   {#if _ld}
@@ -87,7 +114,6 @@
               </div>
             {/if}
           </div>
-
           <div style="flex:1;min-width:0">
             <p style="font-size:.82rem;font-weight:600;line-height:1.35;
               display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
@@ -105,7 +131,6 @@
               {/if}
             </div>
           </div>
-
           {#if i < 3}
             <div class="gold-gradient" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#0A0A0A;flex-shrink:0">{i + 1}</div>
           {/if}
