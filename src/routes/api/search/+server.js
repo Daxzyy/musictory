@@ -17,19 +17,23 @@ export async function GET({url}){
       headers:{
         'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept':'application/json, text/plain, */*',
-        'Accept-Language':'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Origin':'https://musictory.vercel.app',
-        'Referer':'https://musictory.vercel.app/'
+        'Accept-Language':'en-US,en;q=0.9,id;q=0.8',
+        'Referer':'https://api.danzy.web.id/',
+        'Origin':'https://api.danzy.web.id',
+        'Sec-Fetch-Dest':'empty',
+        'Sec-Fetch-Mode':'cors',
+        'Sec-Fetch-Site':'same-origin',
+        'Cache-Control':'no-cache'
       }
     });
     const t=await r.text();
     if(!t.startsWith('{')){
-      return new Response(JSON.stringify({e:1,m:'upstream error'}),{status:502,headers:{'Content-Type':'application/json'}});
+      return new Response(JSON.stringify({e:1,m:t.slice(0,80)}),{status:502,headers:{'Content-Type':'application/json'}});
     }
     return new Response(JSON.stringify({d:enc(t)}),{
       headers:{'Content-Type':'application/json'}
     });
   }catch(e){
-    return new Response(JSON.stringify({e:1}),{status:500,headers:{'Content-Type':'application/json'}});
+    return new Response(JSON.stringify({e:1,m:e.message}),{status:500,headers:{'Content-Type':'application/json'}});
   }
 }
