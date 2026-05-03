@@ -26,7 +26,12 @@
   let _ticker = null;
   let _prev = null;
   let _iframeKey = 0;
-  let _showIframe = false;
+  let _iframeEl = null;
+
+  function _ytMsg(cmd) {
+    if (!_iframeEl) return;
+    _iframeEl.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: cmd, args: [] }), '*');
+  }
 
   $: if ($_q8z && $_q8z !== _prev) {
     _prev = $_q8z;
@@ -35,25 +40,17 @@
     _pct = 0;
     _playing.set(true);
     _iframeKey++;
-    _showIframe = true;
     _startTick();
   }
 
-  $: {
+  $: if (_prev) {
     if ($_playing) {
-      _showIframe = true;
+      _ytMsg('playVideo');
+      _startTick();
     } else {
-      _showIframe = false;
+      _ytMsg('pauseVideo');
+      if (_ticker) { clearInterval(_ticker); _ticker = null; }
     }
-  }
-
-  $: if (!$_playing && _ticker) {
-    clearInterval(_ticker);
-    _ticker = null;
-  }
-
-  $: if ($_playing && !_ticker && $_q8z) {
-    _startTick();
   }
 
   function _startTick() {
@@ -169,15 +166,14 @@
     </div>
 
     <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
-      {#if _showIframe}
-        {#key _iframeKey}
-          <iframe
-            src="https://www.youtube.com/embed/{$_q8z.videoId}?autoplay=1&controls=0&rel=0"
-            width="1" height="1" frameborder="0"
-            allow="autoplay; encrypted-media" title="a"
-          ></iframe>
-        {/key}
-      {/if}
+      {#key _iframeKey}
+        <iframe
+          bind:this={_iframeEl}
+          src="https://www.youtube.com/embed/{$_q8z.videoId}?autoplay=1&controls=0&rel=0&enablejsapi=1"
+          width="1" height="1" frameborder="0"
+          allow="autoplay; encrypted-media" title="a"
+        ></iframe>
+      {/key}
     </div>
 
   </div>
