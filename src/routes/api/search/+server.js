@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 
+export const config = { runtime: 'nodejs18.x' };
+
 const K=Buffer.from('4d7a9c2e1f8b3a6d0e5c9f2b7a4e1d8c','hex');
 const IV=Buffer.from('9998412d5047817f71b13955bded8fe2','hex');
 
@@ -14,9 +16,9 @@ export async function GET({url}){
     const r=await fetch(`https://api.danzy.web.id/api/search/yts?q=${encodeURIComponent(q)}`);
     const t=await r.text();
     return new Response(JSON.stringify({d:enc(t)}),{
-      headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}
+      headers:{'Content-Type':'application/json'}
     });
   }catch(e){
-    return new Response(JSON.stringify({d:''}),{status:500,headers:{'Content-Type':'application/json'}});
+    return new Response(JSON.stringify({e:1}),{status:500,headers:{'Content-Type':'application/json'}});
   }
 }
