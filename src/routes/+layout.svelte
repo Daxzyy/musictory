@@ -71,7 +71,6 @@
 
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
 
-      <!-- Thumbnail with spinning ring like Spotify CD -->
       <div style="position:relative;flex-shrink:0;width:46px;height:46px">
         <img src={$_q8z.thumbnail} alt=""
           style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;
@@ -81,18 +80,15 @@
           border-top-color:#FFD700;border-right-color:rgba(255,215,0,.25);
           animation:_ring 1.8s linear infinite;
           animation-play-state:{_playing ? 'running' : 'paused'}"></div>
-        <!-- center dot -->
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
           width:8px;height:8px;border-radius:50%;background:#0e0d07;
           border:1.5px solid rgba(255,215,0,.4)"></div>
       </div>
 
-      <!-- Title + equalizer -->
       <div style="flex:1;min-width:0">
         <p style="font-size:.76rem;font-weight:700;color:#FFD700;
           white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">{$_q8z.title}</p>
         <div style="display:flex;align-items:center;gap:6px">
-          <!-- Equalizer bars -->
           <div style="display:flex;align-items:flex-end;gap:2px;height:10px">
             {#each [1,2,3,4] as bar}
               <div class="eqbar eqbar{bar}" style="width:3px;border-radius:2px;background:#FFD700;
@@ -105,7 +101,6 @@
         </div>
       </div>
 
-      <!-- Prev / Next -->
       <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
         <button on:click={_prv}
           style="width:33px;height:33px;border-radius:50%;display:flex;align-items:center;justify-content:center;
@@ -126,14 +121,12 @@
       </div>
     </div>
 
-    <!-- Real progress bar -->
     <div style="height:3px;border-radius:99px;background:rgba(255,215,0,.1)">
       <div style="height:100%;width:{_pct}%;border-radius:99px;
         background:linear-gradient(to right,#FFD700,#FFC300);
         transition:width 1s linear;min-width:{_pct>0 ? '6px':'0'}"></div>
     </div>
 
-    <!-- Hidden iframe audio -->
     <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
       <iframe
         src="https://www.youtube.com/embed/{$_q8z.videoId}?autoplay=1&controls=0&rel=0"
@@ -159,9 +152,6 @@
           color:{_rt===p ? '#FFD700' : 'rgba(255,246,204,.38)'}">
         <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d={ic}/></svg>
         <span style="font-size:10px;font-weight:600;letter-spacing:.04em">{l}</span>
-        {#if _rt === p}
-          <div style="width:4px;height:4px;border-radius:50%;background:#FFD700;margin-top:1px"></div>
-        {/if}
       </button>
     {/each}
   </div>
