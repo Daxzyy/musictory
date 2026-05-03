@@ -67,12 +67,9 @@
 <div style="max-width:560px;margin:0 auto;padding:24px 16px 0">
 
   <div style="margin-bottom:20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:5px;height:26px;border-radius:3px;background:linear-gradient(to bottom,#FFD700,#FFC300);flex-shrink:0"></div>
-        <h1 class="text-glow" style="font-size:1.5rem;font-weight:700;color:#FFD700;margin:0">Musictory</h1>
-      </div>
-      <span style="font-size:.65rem;color:rgba(255,215,0,.35);font-weight:600;letter-spacing:.04em">dev by givy</span>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <div style="width:5px;height:26px;border-radius:3px;background:linear-gradient(to bottom,#FFD700,#FFC300);flex-shrink:0"></div>
+      <h1 class="text-glow" style="font-size:1.5rem;font-weight:700;color:#FFD700;margin:0">Musictory</h1>
     </div>
     <p style="color:rgba(255,246,204,.45);font-size:.78rem;margin-left:15px">Lagu Trending 2026 🔥</p>
   </div>
@@ -98,7 +95,7 @@
     </div>
 
   {:else}
-    <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:16px">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:8px">
       {#each _ds as item, i}
         <button on:click={() => _pl(item, i)}
           class="glass-card"
@@ -136,6 +133,10 @@
           {/if}
         </button>
       {/each}
+    </div>
+
+    <div style="padding:20px 0 24px;text-align:center">
+      <span style="font-size:.62rem;color:rgba(255,215,0,.2);letter-spacing:.12em;font-weight:600">· made with 🎵 by givy ·</span>
     </div>
   {/if}
 
