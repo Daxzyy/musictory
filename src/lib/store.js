@@ -4,3 +4,5 @@ export const _p1k = writable([]);
 export const _x9a = writable(0);
 export const _m3v = writable(false);
 export const _r7w = writable(false);
+export const _playing = writable(false);
+export const _showNP = writable(false);
