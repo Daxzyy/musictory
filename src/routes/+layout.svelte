@@ -2,7 +2,7 @@
   import '../app.css';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { _q8z, _m3v, _p1k, _x9a } from '$lib/store.js';
+  import { _q8z, _m3v, _p1k, _x9a, _playing, _showNP } from '$lib/store.js';
   import { onDestroy } from 'svelte';
 
   $: _rt = $page.url.pathname;
@@ -24,22 +24,32 @@
   let _total = 0;
   let _pct = 0;
   let _ticker = null;
-  let _playing = false;
   let _prev = null;
+  let _iframeKey = 0;
 
   $: if ($_q8z && $_q8z !== _prev) {
     _prev = $_q8z;
     _elapsed = 0;
     _total = _dur2s($_q8z.duration);
     _pct = 0;
-    _playing = true;
+    _playing.set(true);
+    _iframeKey++;
+    _startTick();
+  }
+
+  $: if (!$_playing && _ticker) {
+    clearInterval(_ticker);
+    _ticker = null;
+  }
+
+  $: if ($_playing && !_ticker && $_q8z) {
     _startTick();
   }
 
   function _startTick() {
     if (_ticker) clearInterval(_ticker);
     _ticker = setInterval(() => {
-      if (!_playing) return;
+      if (!$_playing) return;
       _elapsed = Math.min(_elapsed + 1, _total || 999);
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
     }, 1000);
@@ -59,6 +69,9 @@
     const n = (b - 1 + a.length) % a.length;
     _x9a.set(n); _q8z.set(a[n]);
   }
+  function _togglePlay() {
+    _playing.update(v => !v);
+  }
 </script>
 
 <div style="padding-bottom:{$_q8z ? '11rem' : '4.5rem'}">
@@ -71,35 +84,39 @@
 
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
 
-      <div style="position:relative;flex-shrink:0;width:46px;height:46px">
-        <img src={$_q8z.thumbnail} alt=""
-          style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;
-            border:2px solid rgba(255,215,0,.3)" />
-        <div style="position:absolute;inset:-4px;border-radius:50%;
-          border:2px solid transparent;
-          border-top-color:#FFD700;border-right-color:rgba(255,215,0,.25);
-          animation:_ring 1.8s linear infinite;
-          animation-play-state:{_playing ? 'running' : 'paused'}"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-          width:8px;height:8px;border-radius:50%;background:#0e0d07;
-          border:1.5px solid rgba(255,215,0,.4)"></div>
-      </div>
+      <button on:click={() => _showNP.set(true)}
+        style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
 
-      <div style="flex:1;min-width:0">
-        <p style="font-size:.76rem;font-weight:700;color:#FFD700;
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">{$_q8z.title}</p>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="display:flex;align-items:flex-end;gap:2px;height:10px">
-            {#each [1,2,3,4] as bar}
-              <div class="eqbar eqbar{bar}" style="width:3px;border-radius:2px;background:#FFD700;
-                animation-play-state:{_playing ? 'running' : 'paused'}"></div>
-            {/each}
-          </div>
-          <span style="font-size:.62rem;color:rgba(255,246,204,.35)">
-            {_s2dur(_elapsed)} / {$_q8z.duration}
-          </span>
+        <div style="position:relative;flex-shrink:0;width:46px;height:46px">
+          <img src={$_q8z.thumbnail} alt=""
+            style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;
+              border:2px solid rgba(255,215,0,.3)" />
+          <div style="position:absolute;inset:-4px;border-radius:50%;
+            border:2px solid transparent;
+            border-top-color:#FFD700;border-right-color:rgba(255,215,0,.25);
+            animation:_ring 1.8s linear infinite;
+            animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+            width:8px;height:8px;border-radius:50%;background:#0e0d07;
+            border:1.5px solid rgba(255,215,0,.4)"></div>
         </div>
-      </div>
+
+        <div style="flex:1;min-width:0">
+          <p style="font-size:.76rem;font-weight:700;color:#FFD700;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">{$_q8z.title}</p>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="display:flex;align-items:flex-end;gap:2px;height:10px">
+              {#each [1,2,3,4] as bar}
+                <div class="eqbar eqbar{bar}" style="width:3px;border-radius:2px;background:#FFD700;
+                  animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+              {/each}
+            </div>
+            <span style="font-size:.62rem;color:rgba(255,246,204,.35)">
+              {_s2dur(_elapsed)} / {$_q8z.duration}
+            </span>
+          </div>
+        </div>
+      </button>
 
       <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
         <button on:click={_prv}
@@ -110,6 +127,20 @@
           onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.color='rgba(255,246,204,.55)'">
           <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
         </button>
+
+        <button on:click={_togglePlay}
+          style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+            background:linear-gradient(135deg,#FFD700,#FFC300);border:none;cursor:pointer;
+            color:#0A0A0A;transition:all .15s;box-shadow:0 0 14px rgba(255,215,0,.3)"
+          onmouseenter="this.style.transform='scale(1.08)'"
+          onmouseleave="this.style.transform='scale(1)'">
+          {#if $_playing}
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          {:else}
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          {/if}
+        </button>
+
         <button on:click={_nxt}
           style="width:33px;height:33px;border-radius:50%;display:flex;align-items:center;justify-content:center;
             background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;
@@ -128,14 +159,105 @@
     </div>
 
     <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
-      <iframe
-        src="https://www.youtube.com/embed/{$_q8z.videoId}?autoplay=1&controls=0&rel=0"
-        width="1" height="1" frameborder="0"
-        allow="autoplay; encrypted-media" title="a"
-      ></iframe>
+      {#key _iframeKey}
+        <iframe
+          src="https://www.youtube.com/embed/{$_q8z.videoId}?autoplay=1&controls=0&rel=0"
+          width="1" height="1" frameborder="0"
+          allow="autoplay; encrypted-media" title="a"
+        ></iframe>
+      {/key}
     </div>
 
   </div>
+</div>
+{/if}
+
+{#if $_showNP && $_q8z}
+<div class="overlay-enter" style="position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#0e0c05 0%,#0A0A0A 100%);overflow:hidden">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0">
+    <button on:click={() => _showNP.set(false)}
+      style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;color:rgba(255,246,204,.6)">
+      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
+    <p style="font-size:.75rem;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.1em">NOW PLAYING</p>
+    <div style="width:38px"></div>
+  </div>
+
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;gap:32px">
+
+    <div style="position:relative;width:240px;height:240px">
+      <img src={$_q8z.thumbnail} alt=""
+        style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;
+          border:3px solid rgba(255,215,0,.2);
+          animation:_ring {$_playing ? '8s' : '0s'} linear infinite;
+          animation-play-state:{$_playing ? 'running' : 'paused'}" />
+      <div style="position:absolute;inset:-8px;border-radius:50%;
+        border:2px solid transparent;
+        border-top-color:#FFD700;border-right-color:rgba(255,215,0,.2);
+        animation:_ring 2.5s linear infinite;
+        animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        width:16px;height:16px;border-radius:50%;background:#0A0A0A;
+        border:2px solid rgba(255,215,0,.4)"></div>
+    </div>
+
+    <div style="text-align:center;width:100%">
+      <p style="font-size:1rem;font-weight:700;color:#FFF6CC;line-height:1.4;
+        display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+        margin-bottom:6px">{$_q8z.title}</p>
+      <p style="font-size:.72rem;color:rgba(255,215,0,.4)">{$_q8z.duration}</p>
+    </div>
+
+    <div style="width:100%">
+      <div style="height:4px;border-radius:99px;background:rgba(255,215,0,.1);margin-bottom:8px">
+        <div style="height:100%;width:{_pct}%;border-radius:99px;
+          background:linear-gradient(to right,#FFD700,#FFC300);
+          transition:width 1s linear;min-width:{_pct>0 ? '8px':'0'}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)}</span>
+        <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{$_q8z.duration}</span>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:20px">
+      <button on:click={() => { _prv(); }}
+        style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;
+          color:rgba(255,246,204,.6);transition:all .15s"
+        onmouseenter="this.style.background='rgba(255,215,0,.18)';this.style.color='#FFD700'"
+        onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.color='rgba(255,246,204,.6)'">
+        <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+
+      <button on:click={_togglePlay}
+        style="width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:linear-gradient(135deg,#FFD700,#FFC300);border:none;cursor:pointer;
+          color:#0A0A0A;transition:all .18s;box-shadow:0 0 28px rgba(255,215,0,.35)"
+        onmouseenter="this.style.transform='scale(1.07)'"
+        onmouseleave="this.style.transform='scale(1)'">
+        {#if $_playing}
+          <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        {:else}
+          <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        {/if}
+      </button>
+
+      <button on:click={() => { _nxt(); }}
+        style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;
+          color:rgba(255,246,204,.6);transition:all .15s"
+        onmouseenter="this.style.background='rgba(255,215,0,.18)';this.style.color='#FFD700'"
+        onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.color='rgba(255,246,204,.6)'">
+        <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6h2v12h-2zm-3.5 6L4 6v12z"/></svg>
+      </button>
+    </div>
+
+  </div>
+
 </div>
 {/if}
 
