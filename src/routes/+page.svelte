@@ -6,8 +6,20 @@
   const __cv = _q8z;
   let _ds = [], _ld = true, _er = null;
 
+  const _queries = [
+    'lagu trend indonesia 2026',
+    'lagu viral tiktok 2026',
+    'dj terbaru 2026',
+    'lagu sad terbaru 2026',
+    'lagu galau terbaru 2026',
+  ];
+
+  function _rq() {
+    return _queries[Math.floor(Math.random() * _queries.length)];
+  }
+
   onMount(async () => {
-    try { _ds = await _g9('lagu trend 2026'); _p1k.set(_ds); }
+    try { _ds = await _g9(_rq()); _p1k.set(_ds); }
     catch (e) { _er = e.message; }
     finally { _ld = false; }
   });
@@ -35,7 +47,7 @@
       <div style="width:5px;height:26px;border-radius:3px;background:linear-gradient(to bottom,#FFD700,#FFC300);flex-shrink:0"></div>
       <h1 class="text-glow" style="font-size:1.5rem;font-weight:700;color:#FFD700;margin:0">Musictory</h1>
     </div>
-    <p style="color:rgba(255,246,204,.45);font-size:.78rem;margin-left:15px">Lagu Trending 2026 🔥</p>
+    <p style="color:rgba(255,246,204,.45);font-size:.78rem;margin-left:15px">Lagu Trending 2025 🔥</p>
   </div>
 
   {#if _ld}
