@@ -7,15 +7,12 @@
   let _ds = [], _ld = true, _er = null;
 
   const _queries = [
-    'lagu trend indonesia 2026',
-    'lagu viral tiktok 2026',
-    'dj terbaru 2026',
-    'lagu sad terbaru 2026',
-    'lagu galau terbaru 2026',
-    'lagu pop indonesia terbaru',
-    'lagu indie indonesia 2026',
-    'lagu r&b indonesia terbaru',
-  ];
+  'lagu trend indonesia 2026',
+  'lagu viral tiktok 2026',
+  'dj terbaru 2026',
+  'lagu sad terbaru 2026',
+  'lagu galau terbaru 2026',
+];
 
   function _shuffle(arr) {
     return arr.sort(() => Math.random() - 0.5);
