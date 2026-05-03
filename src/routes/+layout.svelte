@@ -33,6 +33,41 @@
     _iframeEl.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: cmd, args: [] }), '*');
   }
 
+  function _setMediaSession(track) {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: 'Musictory',
+      artwork: [
+        { src: track.thumbnail, sizes: '256x256', type: 'image/jpeg' },
+        { src: track.thumbnail, sizes: '512x512', type: 'image/jpeg' },
+      ]
+    });
+    navigator.mediaSession.setActionHandler('play', () => { _playing.set(true); });
+    navigator.mediaSession.setActionHandler('pause', () => { _playing.set(false); });
+    navigator.mediaSession.setActionHandler('previoustrack', () => { _prv(); });
+    navigator.mediaSession.setActionHandler('nexttrack', () => { _nxt(); });
+    navigator.mediaSession.setActionHandler('seekbackward', () => {
+      _elapsed = Math.max(0, _elapsed - 10);
+      _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
+    });
+    navigator.mediaSession.setActionHandler('seekforward', () => {
+      _elapsed = Math.min(_total, _elapsed + 10);
+      _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
+    });
+  }
+
+  function _updatePositionState() {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: _total || 0,
+        playbackRate: 1,
+        position: _elapsed
+      });
+    } catch {}
+  }
+
   $: if ($_q8z && $_q8z !== _prev) {
     _prev = $_q8z;
     _elapsed = 0;
@@ -40,15 +75,18 @@
     _pct = 0;
     _playing.set(true);
     _iframeKey++;
+    _setMediaSession($_q8z);
     _startTick();
   }
 
   $: if (_prev) {
     if ($_playing) {
       _ytMsg('playVideo');
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       _startTick();
     } else {
       _ytMsg('pauseVideo');
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       if (_ticker) { clearInterval(_ticker); _ticker = null; }
     }
   }
@@ -59,6 +97,7 @@
       if (!$_playing) return;
       _elapsed = Math.min(_elapsed + 1, _total || 999);
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
+      _updatePositionState();
     }, 1000);
   }
 
