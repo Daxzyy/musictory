@@ -8,15 +8,15 @@ function enc(data){
   return Buffer.concat([c.update(data,'utf8'),c.final()]).toString('base64');
 }
 
-export default async function handler(req,res){
-  res.setHeader('Access-Control-Allow-Origin','*');
-  const q=req.query.q||'';
+export async function GET({url}){
+  const q=url.searchParams.get('q')||'';
   try{
     const r=await fetch(`https://api.danzy.web.id/api/search/yts?q=${encodeURIComponent(q)}`);
     const t=await r.text();
-    res.setHeader('Content-Type','application/json');
-    res.status(200).json({d:enc(t)});
+    return new Response(JSON.stringify({d:enc(t)}),{
+      headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}
+    });
   }catch(e){
-    res.status(500).json({d:''});
+    return new Response(JSON.stringify({d:''}),{status:500,headers:{'Content-Type':'application/json'}});
   }
 }
