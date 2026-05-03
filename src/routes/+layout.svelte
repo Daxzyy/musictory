@@ -26,6 +26,7 @@
   let _ticker = null;
   let _prev = null;
   let _iframeKey = 0;
+  let _showIframe = false;
 
   $: if ($_q8z && $_q8z !== _prev) {
     _prev = $_q8z;
@@ -34,7 +35,16 @@
     _pct = 0;
     _playing.set(true);
     _iframeKey++;
+    _showIframe = true;
     _startTick();
+  }
+
+  $: {
+    if ($_playing) {
+      _showIframe = true;
+    } else {
+      _showIframe = false;
+    }
   }
 
   $: if (!$_playing && _ticker) {
@@ -159,13 +169,15 @@
     </div>
 
     <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
-      {#key _iframeKey}
-        <iframe
-          src="https://www.youtube.com/embed/{$_q8z.videoId}?autoplay=1&controls=0&rel=0"
-          width="1" height="1" frameborder="0"
-          allow="autoplay; encrypted-media" title="a"
-        ></iframe>
-      {/key}
+      {#if _showIframe}
+        {#key _iframeKey}
+          <iframe
+            src="https://www.youtube.com/embed/{$_q8z.videoId}?autoplay=1&controls=0&rel=0"
+            width="1" height="1" frameborder="0"
+            allow="autoplay; encrypted-media" title="a"
+          ></iframe>
+        {/key}
+      {/if}
     </div>
 
   </div>
@@ -174,7 +186,7 @@
 
 {#if $_showNP && $_q8z}
 <div class="overlay-enter" style="position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;
-  background:linear-gradient(180deg,#0e0c05 0%,#0A0A0A 100%);overflow:hidden">
+  background:linear-gradient(180deg,#0e0c05 0%,#0A0A0A 100%);overflow:hidden;overscroll-behavior:none;touch-action:none">
 
   <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0">
     <button on:click={() => _showNP.set(false)}
@@ -186,13 +198,13 @@
     <div style="width:38px"></div>
   </div>
 
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;gap:32px">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;gap:32px;overflow:hidden">
 
     <div style="position:relative;width:240px;height:240px">
       <img src={$_q8z.thumbnail} alt=""
         style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;
           border:3px solid rgba(255,215,0,.2);
-          animation:_ring {$_playing ? '8s' : '0s'} linear infinite;
+          animation:_spin 8s linear infinite;
           animation-play-state:{$_playing ? 'running' : 'paused'}" />
       <div style="position:absolute;inset:-8px;border-radius:50%;
         border:2px solid transparent;
@@ -295,6 +307,7 @@
   @keyframes _sp   { to { transform: rotate(360deg); } }
   @keyframes _pl   { 0%,100%{opacity:.55} 50%{opacity:.9} }
   @keyframes _ring { to { transform: rotate(360deg); } }
+  @keyframes _spin { to { transform: rotate(360deg); } }
 
   .eqbar { height: 3px; transition: height .1s; }
   .eqbar1 { animation: _eq1 .5s ease-in-out infinite alternate; }
