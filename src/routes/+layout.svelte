@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { _q8z, _m3v, _p1k, _x9a, _playing, _showNP } from '$lib/store.js';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
 
   $: _rt = $page.url.pathname;
 
@@ -28,6 +28,33 @@
   let _iframeKey = 0;
   let _iframeEl = null;
 
+  let _audioCtx = null;
+  let _silentSrc = null;
+  let _gainNode = null;
+
+  function _unlockAudio() {
+    if (_audioCtx) {
+      if (_audioCtx.state === 'suspended') _audioCtx.resume();
+      return;
+    }
+    try {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      _gainNode = _audioCtx.createGain();
+      _gainNode.gain.value = 0.001;
+      _gainNode.connect(_audioCtx.destination);
+
+      const buf = _audioCtx.createBuffer(1, _audioCtx.sampleRate * 2, _audioCtx.sampleRate);
+      const ch = buf.getChannelData(0);
+      for (let i = 0; i < ch.length; i++) ch[i] = Math.sin(i) * 0.0001;
+
+      _silentSrc = _audioCtx.createBufferSource();
+      _silentSrc.buffer = buf;
+      _silentSrc.loop = true;
+      _silentSrc.connect(_gainNode);
+      _silentSrc.start();
+    } catch(e) {}
+  }
+
   function _ytMsg(cmd) {
     if (!_iframeEl) return;
     _iframeEl.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: cmd, args: [] }), '*');
@@ -43,10 +70,19 @@
         { src: track.thumbnail, sizes: '512x512', type: 'image/jpeg' },
       ]
     });
-    navigator.mediaSession.setActionHandler('play', () => { _playing.set(true); });
-    navigator.mediaSession.setActionHandler('pause', () => { _playing.set(false); });
-    navigator.mediaSession.setActionHandler('previoustrack', () => { _prv(); });
-    navigator.mediaSession.setActionHandler('nexttrack', () => { _nxt(); });
+    navigator.mediaSession.setActionHandler('play', () => {
+      _playing.set(true);
+      _ytMsg('playVideo');
+      if (_audioCtx?.state === 'suspended') _audioCtx.resume();
+      navigator.mediaSession.playbackState = 'playing';
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      _playing.set(false);
+      _ytMsg('pauseVideo');
+      navigator.mediaSession.playbackState = 'paused';
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => _prv());
+    navigator.mediaSession.setActionHandler('nexttrack', () => _nxt());
     navigator.mediaSession.setActionHandler('seekbackward', () => {
       _elapsed = Math.max(0, _elapsed - 10);
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
@@ -55,6 +91,7 @@
       _elapsed = Math.min(_total, _elapsed + 10);
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
     });
+    navigator.mediaSession.playbackState = 'playing';
   }
 
   function _updatePositionState() {
@@ -75,13 +112,18 @@
     _pct = 0;
     _playing.set(true);
     _iframeKey++;
+    _unlockAudio();
     _setMediaSession($_q8z);
+    setTimeout(() => {
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    }, 1500);
     _startTick();
   }
 
   $: if (_prev) {
     if ($_playing) {
       _ytMsg('playVideo');
+      if (_audioCtx?.state === 'suspended') _audioCtx.resume();
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       _startTick();
     } else {
@@ -101,7 +143,22 @@
     }, 1000);
   }
 
-  onDestroy(() => { if (_ticker) clearInterval(_ticker); });
+  onMount(() => {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        if (_audioCtx?.state === 'suspended') _audioCtx.resume();
+        if ($_playing && 'mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'playing';
+        }
+      }
+    });
+  });
+
+  onDestroy(() => {
+    if (_ticker) clearInterval(_ticker);
+    if (_silentSrc) { try { _silentSrc.stop(); } catch {} }
+    if (_audioCtx) { try { _audioCtx.close(); } catch {} }
+  });
 
   function _nxt() {
     const a = $_p1k, b = $_x9a;
