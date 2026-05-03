@@ -67,11 +67,14 @@
 <div style="max-width:560px;margin:0 auto;padding:24px 16px 0">
 
   <div style="margin-bottom:20px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">
       <div style="width:5px;height:26px;border-radius:3px;background:linear-gradient(to bottom,#FFD700,#FFC300);flex-shrink:0"></div>
-      <h1 class="text-glow" style="font-size:1.5rem;font-weight:700;color:#FFD700;margin:0">Musictory</h1>
+      <div>
+        <h1 class="text-glow" style="font-size:1.5rem;font-weight:700;color:#FFD700;margin:0;line-height:1.2">Musictory</h1>
+        <p style="font-size:.6rem;color:rgba(255,215,0,.3);font-weight:600;letter-spacing:.1em;margin:0">by givy</p>
+      </div>
     </div>
-    <p style="color:rgba(255,246,204,.45);font-size:.78rem;margin-left:15px">Lagu Trending 2026 🔥</p>
+    <p style="color:rgba(255,246,204,.45);font-size:.78rem;margin-left:15px;margin-top:4px">Lagu Trending 2026 🔥</p>
   </div>
 
   {#if _ld}
