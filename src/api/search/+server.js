@@ -1,7 +1,5 @@
 import crypto from 'crypto';
 
-export const config = { runtime: 'nodejs20.x' };
-
 const K=Buffer.from('4d7a9c2e1f8b3a6d0e5c9f2b7a4e1d8c','hex');
 const IV=Buffer.from('9998412d5047817f71b13955bded8fe2','hex');
 
