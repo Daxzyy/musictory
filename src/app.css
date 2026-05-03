@@ -3,49 +3,53 @@
 @tailwind components;
 @tailwind utilities;
 
-* { font-family: 'Quicksand', sans-serif; }
+* { font-family: 'Quicksand', sans-serif; box-sizing: border-box; }
 
 body {
   background: #0A0A0A;
   color: #FFF6CC;
   min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: #111; }
 ::-webkit-scrollbar-thumb { background: #FFD700; border-radius: 2px; }
 
 .glass {
-  background: rgba(255, 215, 0, 0.04);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(30, 28, 20, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 215, 0, 0.12);
+}
+
+.glass-card {
+  background: rgba(22, 20, 14, 0.9);
   border: 1px solid rgba(255, 215, 0, 0.1);
+  transition: all 0.18s ease;
 }
 
-.glow { box-shadow: 0 0 20px rgba(255, 215, 0, 0.15); }
-.glow-sm { box-shadow: 0 0 10px rgba(255, 215, 0, 0.1); }
-
-.card-hover {
-  transition: all 0.2s ease;
-}
-.card-hover:hover {
-  transform: scale(1.02);
-  box-shadow: 0 0 24px rgba(255, 215, 0, 0.2);
+.glass-card:hover {
+  background: rgba(38, 34, 18, 0.98);
   border-color: rgba(255, 215, 0, 0.3);
+  transform: scale(1.015);
+  box-shadow: 0 4px 22px rgba(255, 215, 0, 0.12);
 }
+
+.glass-card:active { transform: scale(0.99); }
 
 .gold-gradient {
-  background: linear-gradient(135deg, #FFD700 0%, #FFC300 50%, #FFD700 100%);
+  background: linear-gradient(135deg, #FFD700 0%, #FFC300 60%, #FFD700 100%);
 }
 
-.text-glow {
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-}
+.text-glow { text-shadow: 0 0 24px rgba(255,215,0,.55); }
+.glow { box-shadow: 0 0 28px rgba(255,215,0,.18); }
 
 .skeleton {
-  background: linear-gradient(90deg, rgba(255,215,0,0.05) 25%, rgba(255,215,0,0.1) 50%, rgba(255,215,0,0.05) 75%);
+  background: linear-gradient(90deg, rgba(255,215,0,.04) 25%, rgba(255,215,0,.09) 50%, rgba(255,215,0,.04) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.6s infinite;
+  border-radius: 8px;
 }
 
 @keyframes shimmer {
@@ -53,21 +57,19 @@ body {
   100% { background-position: 200% 0; }
 }
 
-.overlay-enter {
-  animation: overlayIn 0.3s ease forwards;
-}
+.overlay-enter { animation: overlayIn 0.25s ease forwards; }
 
 @keyframes overlayIn {
-  from { opacity: 0; transform: scale(0.97); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
-.nav-active { color: #FFD700; }
-.nav-active .nav-dot { opacity: 1; }
-.nav-dot { opacity: 0; transition: opacity 0.2s; }
+.nav-bar {
+  background: #111008;
+  border-top: 1px solid rgba(255,215,0,.14);
+}
 
 .player-bar {
-  background: rgba(10, 10, 10, 0.95);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 215, 0, 0.15);
+  background: #0e0d07;
+  border-top: 1px solid rgba(255,215,0,.14);
 }
