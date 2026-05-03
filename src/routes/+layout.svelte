@@ -27,31 +27,15 @@
   let _prev = null;
   let _iframeKey = 0;
   let _iframeEl = null;
-
-  let _audioCtx = null;
-  let _silentSrc = null;
-  let _gainNode = null;
+  let _keepAliveAudio = null;
 
   function _unlockAudio() {
-    if (_audioCtx) {
-      if (_audioCtx.state === 'suspended') _audioCtx.resume();
-      return;
-    }
+    if (_keepAliveAudio) return;
     try {
-      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      _gainNode = _audioCtx.createGain();
-      _gainNode.gain.value = 0.001;
-      _gainNode.connect(_audioCtx.destination);
-
-      const buf = _audioCtx.createBuffer(1, _audioCtx.sampleRate * 2, _audioCtx.sampleRate);
-      const ch = buf.getChannelData(0);
-      for (let i = 0; i < ch.length; i++) ch[i] = Math.sin(i) * 0.0001;
-
-      _silentSrc = _audioCtx.createBufferSource();
-      _silentSrc.buffer = buf;
-      _silentSrc.loop = true;
-      _silentSrc.connect(_gainNode);
-      _silentSrc.start();
+      _keepAliveAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+      _keepAliveAudio.loop = true;
+      _keepAliveAudio.volume = 0.001;
+      _keepAliveAudio.play().catch(() => {});
     } catch(e) {}
   }
 
@@ -73,7 +57,7 @@
     navigator.mediaSession.setActionHandler('play', () => {
       _playing.set(true);
       _ytMsg('playVideo');
-      if (_audioCtx?.state === 'suspended') _audioCtx.resume();
+      _keepAliveAudio?.play().catch(() => {});
       navigator.mediaSession.playbackState = 'playing';
     });
     navigator.mediaSession.setActionHandler('pause', () => {
@@ -123,11 +107,12 @@
   $: if (_prev) {
     if ($_playing) {
       _ytMsg('playVideo');
-      if (_audioCtx?.state === 'suspended') _audioCtx.resume();
+      _keepAliveAudio?.play().catch(() => {});
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       _startTick();
     } else {
       _ytMsg('pauseVideo');
+      _keepAliveAudio?.pause();
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       if (_ticker) { clearInterval(_ticker); _ticker = null; }
     }
@@ -146,9 +131,9 @@
   onMount(() => {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        if (_audioCtx?.state === 'suspended') _audioCtx.resume();
-        if ($_playing && 'mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'playing';
+        if ($_playing) {
+          _keepAliveAudio?.play().catch(() => {});
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         }
       }
     });
@@ -156,8 +141,7 @@
 
   onDestroy(() => {
     if (_ticker) clearInterval(_ticker);
-    if (_silentSrc) { try { _silentSrc.stop(); } catch {} }
-    if (_audioCtx) { try { _audioCtx.close(); } catch {} }
+    if (_keepAliveAudio) { _keepAliveAudio.pause(); _keepAliveAudio = null; }
   });
 
   function _nxt() {
