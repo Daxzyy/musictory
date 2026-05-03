@@ -28,15 +28,50 @@
   let _iframeKey = 0;
   let _iframeEl = null;
   let _keepAliveAudio = null;
+  let _wakeLock = null;
+  let _swPing = null;
+
+  async function _requestWakeLock() {
+    try {
+      if (_wakeLock) { try { await _wakeLock.release(); } catch(_) {} }
+      if ('wakeLock' in navigator) {
+        _wakeLock = await navigator.wakeLock.request('screen');
+        _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+      }
+    } catch(_) {}
+  }
+
+  function _releaseWakeLock() {
+    if (_wakeLock) {
+      try { _wakeLock.release(); } catch(_) {}
+      _wakeLock = null;
+    }
+  }
+
+  function _startSwPing() {
+    if (_swPing) clearInterval(_swPing);
+    _swPing = setInterval(() => {
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage('keepAlive');
+      }
+    }, 20000);
+  }
+
+  function _stopSwPing() {
+    if (_swPing) { clearInterval(_swPing); _swPing = null; }
+  }
 
   function _unlockAudio() {
-    if (_keepAliveAudio) return;
+    if (_keepAliveAudio) {
+      _keepAliveAudio.play().catch(() => {});
+      return;
+    }
     try {
-      _keepAliveAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+      _keepAliveAudio = new Audio('/silence.wav');
       _keepAliveAudio.loop = true;
       _keepAliveAudio.volume = 0.001;
       _keepAliveAudio.play().catch(() => {});
-    } catch(e) {}
+    } catch(_) {}
   }
 
   function _ytMsg(cmd) {
@@ -57,12 +92,15 @@
     navigator.mediaSession.setActionHandler('play', () => {
       _playing.set(true);
       _ytMsg('playVideo');
-      _keepAliveAudio?.play().catch(() => {});
+      _unlockAudio();
+      _requestWakeLock();
       navigator.mediaSession.playbackState = 'playing';
     });
     navigator.mediaSession.setActionHandler('pause', () => {
       _playing.set(false);
       _ytMsg('pauseVideo');
+      if (_keepAliveAudio) _keepAliveAudio.pause();
+      _releaseWakeLock();
       navigator.mediaSession.playbackState = 'paused';
     });
     navigator.mediaSession.setActionHandler('previoustrack', () => _prv());
@@ -86,7 +124,7 @@
         playbackRate: 1,
         position: _elapsed
       });
-    } catch {}
+    } catch(_) {}
   }
 
   $: if ($_q8z && $_q8z !== _prev) {
@@ -97,7 +135,13 @@
     _playing.set(true);
     _iframeKey++;
     _unlockAudio();
-    _setMediaSession($_q8z);
+    _requestWakeLock();
+    _startSwPing();
+    _keepAliveAudio?.play().then(() => {
+      _setMediaSession($_q8z);
+    }).catch(() => {
+      _setMediaSession($_q8z);
+    });
     setTimeout(() => {
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     }, 1500);
@@ -107,12 +151,16 @@
   $: if (_prev) {
     if ($_playing) {
       _ytMsg('playVideo');
-      _keepAliveAudio?.play().catch(() => {});
+      _unlockAudio();
+      _requestWakeLock();
+      _startSwPing();
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       _startTick();
     } else {
       _ytMsg('pauseVideo');
-      _keepAliveAudio?.pause();
+      if (_keepAliveAudio) _keepAliveAudio.pause();
+      _releaseWakeLock();
+      _stopSwPing();
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       if (_ticker) { clearInterval(_ticker); _ticker = null; }
     }
@@ -129,18 +177,29 @@
   }
 
   onMount(() => {
-    document.addEventListener('visibilitychange', () => {
+    document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
         if ($_playing) {
-          _keepAliveAudio?.play().catch(() => {});
+          _unlockAudio();
+          await _requestWakeLock();
           if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+          _ytMsg('playVideo');
         }
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if ($_playing) {
+        _unlockAudio();
+        _ytMsg('playVideo');
       }
     });
   });
 
   onDestroy(() => {
     if (_ticker) clearInterval(_ticker);
+    _stopSwPing();
+    _releaseWakeLock();
     if (_keepAliveAudio) { _keepAliveAudio.pause(); _keepAliveAudio = null; }
   });
 
