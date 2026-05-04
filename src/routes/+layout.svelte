@@ -84,9 +84,10 @@
     _audioEl.pause();
     _audioEl.src = '';
     const url = await _getStreamUrl(track.videoId);
+    _m3v.set(false);
     if (!url) return;
     _audioEl.src = url;
-    _audioEl.play().catch(() => {});
+    await _audioEl.play().catch(() => {});
     _setMediaSession(track);
     _startTick();
   }
