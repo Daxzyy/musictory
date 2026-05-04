@@ -42,26 +42,48 @@
   let _swipeStartY = 0;
   let _swipeDeltaY = 0;
   let _isSwiping = false;
+  let _swipeLocked = false;
   let _playerEl = null;
 
   function _onPlayerTouchStart(e) {
+    const seekEls = _playerEl ? _playerEl.querySelectorAll('.seek-range') : [];
+    for (const el of seekEls) {
+      if (el.contains(e.target)) return;
+    }
     _swipeStartY = e.touches[0].clientY;
     _swipeDeltaY = 0;
     _isSwiping = true;
+    _swipeHoriz = false;
+    _swipeLocked = false;
   }
+
+  let _swipeHoriz = false;
 
   function _onPlayerTouchMove(e) {
     if (!_isSwiping) return;
-    _swipeDeltaY = e.touches[0].clientY - _swipeStartY;
+    const dy = e.touches[0].clientY - _swipeStartY;
+    const dx = Math.abs(e.touches[0].clientX - (e.touches[0].clientX));
+
+    if (!_swipeLocked) {
+      if (Math.abs(dy) < 5) return;
+      if (dy <= 0) { _isSwiping = false; return; }
+      _swipeLocked = true;
+    }
+
+    e.preventDefault();
+    _swipeDeltaY = dy;
+
     if (_swipeDeltaY > 0 && _playerEl) {
-      _playerEl.style.transition = "none";
+      _playerEl.style.transition = 'none';
       _playerEl.style.transform = `translateY(${Math.min(_swipeDeltaY * 0.7, 90)}px)`;
       _playerEl.style.opacity = `${Math.max(0.2, 1 - _swipeDeltaY / 100)}`;
     }
   }
 
   function _onPlayerTouchEnd() {
+    if (!_isSwiping) return;
     _isSwiping = false;
+    _swipeLocked = false;
     if (_swipeDeltaY > 60) {
       if (_playerEl) {
         _playerEl.style.transition = 'transform .18s ease, opacity .18s ease';
@@ -284,8 +306,8 @@
 <div
   bind:this={_playerEl}
   class="player-bar"
-  style="position:fixed;bottom:58px;left:0;right:0;z-index:40;padding:12px 16px 10px;transition:transform .2s ease,opacity .2s ease"
-  on:touchstart={_onPlayerTouchStart}
+  style="position:fixed;bottom:58px;left:0;right:0;z-index:40;padding:12px 16px 10px;transition:transform .2s ease,opacity .2s ease;touch-action:none"
+  on:touchstart|passive={_onPlayerTouchStart}
   on:touchmove={_onPlayerTouchMove}
   on:touchend={_onPlayerTouchEnd}
 >
@@ -494,7 +516,7 @@
       ['/', 'Beranda', 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z'],
       ['/search', 'Cari', 'M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'],
       ['/library', 'Library', 'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z'],
-      ['/developer', 'Tentang', 'M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-11h2V7h-2v2z']
+      ['/tentang', 'Tentang', 'M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-11h2V7h-2v2z']
     ] as [p, l, ic]}
       <button on:click={() => goto(p)}
         style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0 8px;
