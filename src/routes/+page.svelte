@@ -7,20 +7,15 @@
   let _ds = [], _ld = true, _er = null;
 
   const _queries = [
-  'lagu trend indonesia 2026',
-  'lagu viral tiktok 2026',
-  'dj terbaru 2026',
-  'lagu sad terbaru 2026',
-  'lagu galau terbaru 2026',
-];
+    'lagu trend indonesia 2026',
+    'lagu viral tiktok 2026',
+    'dj terbaru 2026',
+    'lagu sad terbaru 2026',
+    'lagu galau terbaru 2026',
+  ];
 
-  function _shuffle(arr) {
-    return arr.sort(() => Math.random() - 0.5);
-  }
-
-  function _pick(n) {
-    return _shuffle([..._queries]).slice(0, n);
-  }
+  function _shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
+  function _pick(n) { return _shuffle([..._queries]).slice(0, n); }
 
   onMount(async () => {
     try {
@@ -30,10 +25,7 @@
       const merged = [];
       for (const list of results) {
         for (const item of list) {
-          if (!seen.has(item.videoId)) {
-            seen.add(item.videoId);
-            merged.push(item);
-          }
+          if (!seen.has(item.videoId)) { seen.add(item.videoId); merged.push(item); }
         }
       }
       _ds = _shuffle(merged);
@@ -45,11 +37,11 @@
     }
   });
 
-  async function _pl(item, idx) {
+  function _pl(item, idx) {
     _m3v.set(true);
-    await new Promise(r => setTimeout(r, 1400 + Math.random() * 600));
-    _q8z.set(item); _x9a.set(idx); _p1k.set(_ds);
-    _m3v.set(false);
+    _p1k.set(_ds);
+    _x9a.set(idx);
+    _q8z.set(item);
   }
 
   function _fmt(v) {
