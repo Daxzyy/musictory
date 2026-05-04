@@ -53,13 +53,13 @@
       ]
     });
     navigator.mediaSession.setActionHandler('play', () => {
+      if (_audioEl) _audioEl.play().catch(() => {});
       _playing.set(true);
-      _audioEl?.play();
       navigator.mediaSession.playbackState = 'playing';
     });
     navigator.mediaSession.setActionHandler('pause', () => {
+      if (_audioEl) _audioEl.pause();
       _playing.set(false);
-      _audioEl?.pause();
       navigator.mediaSession.playbackState = 'paused';
     });
     navigator.mediaSession.setActionHandler('previoustrack', () => _prv());
@@ -135,13 +135,16 @@
     _startTick();
   }
 
-  $: if (_prev && !_loading) {
+  function _togglePlay() {
+    if (!_audioEl || _loading) return;
     if ($_playing) {
-      if (_audioEl?.paused) _audioEl.play().catch(() => {});
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-    } else {
-      if (_audioEl && !_audioEl.paused) _audioEl.pause();
+      _audioEl.pause();
+      _playing.set(false);
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    } else {
+      _audioEl.play().catch(() => {});
+      _playing.set(true);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     }
   }
 
@@ -174,9 +177,6 @@
     if (!a.length) return;
     const n = (b - 1 + a.length) % a.length;
     _x9a.set(n); _q8z.set(a[n]);
-  }
-  function _togglePlay() {
-    _playing.update(v => !v);
   }
 
   let _seekEl1 = null;
