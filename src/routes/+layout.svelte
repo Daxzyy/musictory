@@ -8,15 +8,12 @@
 
   $: _rt = $page.url.pathname;
 
-  // FIX: Body overflow — pake function biasa biar lebih predictable
   function _setBodyLock(locked) {
     if (typeof document === 'undefined') return;
     document.body.style.overflow = locked ? 'hidden' : '';
   }
 
   $: _setBodyLock($_showNP || $_m3v);
-
-
 
   function _dur2s(d) {
     if (!d) return 0;
@@ -41,6 +38,38 @@
   let _audioEl = null;
   let _loading = false;
   let _seeking = false;
+
+  let _swipeStartY = 0;
+  let _swipeDeltaY = 0;
+  let _isSwiping = false;
+  let _playerEl = null;
+
+  function _onPlayerTouchStart(e) {
+    _swipeStartY = e.touches[0].clientY;
+    _swipeDeltaY = 0;
+    _isSwiping = true;
+  }
+
+  function _onPlayerTouchMove(e) {
+    if (!_isSwiping) return;
+    _swipeDeltaY = e.touches[0].clientY - _swipeStartY;
+    if (_swipeDeltaY > 0 && _playerEl) {
+      _playerEl.style.transform = `translateY(${Math.min(_swipeDeltaY * 0.5, 40)}px)`;
+      _playerEl.style.opacity = `${Math.max(0.4, 1 - _swipeDeltaY / 160)}`;
+    }
+  }
+
+  function _onPlayerTouchEnd() {
+    _isSwiping = false;
+    if (_playerEl) {
+      _playerEl.style.transform = '';
+      _playerEl.style.opacity = '';
+    }
+    if (_swipeDeltaY > 60) {
+      _closeTrack();
+    }
+    _swipeDeltaY = 0;
+  }
 
   function _setMediaSession(track) {
     if (!('mediaSession' in navigator)) return;
@@ -181,15 +210,12 @@
   let _seekEl1 = null;
   let _seekEl2 = null;
 
-  // FIX: Selalu null-check sebelum set value
   function _syncSeekEls(val) {
     if (_seekEl1) _seekEl1.value = val;
     if (_seekEl2) _seekEl2.value = val;
   }
 
-  function _onSeekStart() {
-    _seeking = true;
-  }
+  function _onSeekStart() { _seeking = true; }
   function _onSeekInput(e) {
     if (!_total || !isFinite(_total)) return;
     const val = Number(e.target.value);
@@ -219,8 +245,6 @@
     _setBodyLock(false);
   }
 
-  // Buka NP overlay + sync seekEl2 ke posisi yg bener via rAF
-  // rAF jalan setelah DOM paint — seekEl2 udah ada, ga trigger Svelte reactivity
   function _openNP() {
     _showNP.set(true);
     requestAnimationFrame(() => {
@@ -247,7 +271,18 @@
 </div>
 
 {#if $_q8z}
-<div class="player-bar" style="position:fixed;bottom:58px;left:0;right:0;z-index:40;padding:12px 16px 10px">
+<div
+  bind:this={_playerEl}
+  class="player-bar"
+  style="position:fixed;bottom:58px;left:0;right:0;z-index:40;padding:12px 16px 10px;transition:transform .2s ease,opacity .2s ease"
+  on:touchstart={_onPlayerTouchStart}
+  on:touchmove={_onPlayerTouchMove}
+  on:touchend={_onPlayerTouchEnd}
+>
+  <div style="display:flex;justify-content:center;margin-bottom:8px">
+    <div style="width:36px;height:4px;border-radius:99px;background:rgba(255,215,0,.2)"></div>
+  </div>
+
   <div style="max-width:560px;margin:0 auto">
 
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;position:relative;z-index:2">
@@ -265,7 +300,7 @@
             animation:_ring 1.8s linear infinite;
             animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-            width:8px;height:8px;border-radius:50%;background:#0e0d07;
+            width:8px;height:8px;border-radius:50%;background:#181818;
             border:1.5px solid rgba(255,215,0,.4)"></div>
         </div>
 
@@ -299,7 +334,7 @@
         <button on:click={_togglePlay}
           style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
             background:linear-gradient(135deg,#FFD700,#FFC300);border:none;cursor:pointer;
-            color:#0A0A0A;transition:all .15s;box-shadow:0 0 14px rgba(255,215,0,.3)"
+            color:#141414;transition:all .15s;box-shadow:0 0 14px rgba(255,215,0,.3)"
           onmouseenter="this.style.transform='scale(1.08)'"
           onmouseleave="this.style.transform='scale(1)'">
           {#if $_playing}
@@ -317,15 +352,6 @@
           onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.color='rgba(255,246,204,.55)'">
           <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6h2v12h-2zm-3.5 6L4 6v12z"/></svg>
         </button>
-
-        <button on:click={_closeTrack}
-          style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-            background:rgba(255,80,80,.08);border:1px solid rgba(255,80,80,.18);cursor:pointer;
-            color:rgba(255,120,120,.6);transition:all .15s;margin-left:2px"
-          onmouseenter="this.style.background='rgba(255,80,80,.22)';this.style.color='#ff6b6b'"
-          onmouseleave="this.style.background='rgba(255,80,80,.08)';this.style.color='rgba(255,120,120,.6)'">
-          <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-        </button>
       </div>
     </div>
 
@@ -339,10 +365,10 @@
         type="range" min="0" max="100" step="0.1"
         bind:this={_seekEl1}
         on:mousedown={_onSeekStart}
-        on:touchstart={_onSeekStart}
+        on:touchstart|stopPropagation={_onSeekStart}
         on:input={_onSeekInput}
         on:mouseup={_onSeekEnd}
-        on:touchend={_onSeekEnd}
+        on:touchend|stopPropagation={_onSeekEnd}
         class="seek-range"
         style="position:absolute;left:0;right:0;width:100%;margin:0;padding:0;touch-action:none;z-index:1" />
     </div>
@@ -353,10 +379,9 @@
 
 {#if $_showNP && $_q8z}
 <div class="overlay-enter" style="position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;
-  background:linear-gradient(180deg,#0e0c05 0%,#0A0A0A 100%);overflow:hidden;overscroll-behavior:contain">
+  background:linear-gradient(180deg,#1c1c1c 0%,#141414 100%);overflow:hidden;overscroll-behavior:contain">
 
   <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0">
-    <!-- FIX: pakai _closeNP() bukan langsung _showNP.set(false) -->
     <button on:click={_closeNP}
       style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
         background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;color:rgba(255,246,204,.6)">
@@ -380,7 +405,7 @@
         animation:_ring 2.5s linear infinite;
         animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-        width:16px;height:16px;border-radius:50%;background:#0A0A0A;
+        width:16px;height:16px;border-radius:50%;background:#141414;
         border:2px solid rgba(255,215,0,.4)"></div>
     </div>
 
@@ -391,29 +416,29 @@
       <p style="font-size:.72rem;color:rgba(255,215,0,.4)">{$_q8z.duration}</p>
     </div>
 
-      <div style="width:100%">
-        <div style="position:relative;height:18px;display:flex;align-items:center;margin-bottom:8px;cursor:pointer">
-          <div style="position:absolute;left:0;right:0;height:4px;border-radius:99px;background:rgba(255,215,0,.1)">
-            <div style="height:100%;width:{_pct}%;border-radius:99px;
-              background:linear-gradient(to right,#FFD700,#FFC300);
-              transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '8px':'0'}"></div>
-          </div>
-          <input
-            type="range" min="0" max="100" step="0.1"
-            bind:this={_seekEl2}
-            on:mousedown={_onSeekStart}
-            on:touchstart={_onSeekStart}
-            on:input={_onSeekInput}
-            on:mouseup={_onSeekEnd}
-            on:touchend={_onSeekEnd}
-            class="seek-range"
-            style="position:absolute;left:0;right:0;width:100%;margin:0;padding:0;touch-action:none" />
+    <div style="width:100%">
+      <div style="position:relative;height:18px;display:flex;align-items:center;margin-bottom:8px;cursor:pointer">
+        <div style="position:absolute;left:0;right:0;height:4px;border-radius:99px;background:rgba(255,215,0,.1)">
+          <div style="height:100%;width:{_pct}%;border-radius:99px;
+            background:linear-gradient(to right,#FFD700,#FFC300);
+            transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '8px':'0'}"></div>
         </div>
-        <div style="display:flex;justify-content:space-between">
-          <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)}</span>
-          <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{$_q8z.duration}</span>
-        </div>
+        <input
+          type="range" min="0" max="100" step="0.1"
+          bind:this={_seekEl2}
+          on:mousedown={_onSeekStart}
+          on:touchstart={_onSeekStart}
+          on:input={_onSeekInput}
+          on:mouseup={_onSeekEnd}
+          on:touchend={_onSeekEnd}
+          class="seek-range"
+          style="position:absolute;left:0;right:0;width:100%;margin:0;padding:0;touch-action:none" />
       </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)}</span>
+        <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{$_q8z.duration}</span>
+      </div>
+    </div>
 
     <div style="display:flex;align-items:center;justify-content:center;gap:20px">
       <button on:click={_prv}
@@ -428,7 +453,7 @@
       <button on:click={_togglePlay}
         style="width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;
           background:linear-gradient(135deg,#FFD700,#FFC300);border:none;cursor:pointer;
-          color:#0A0A0A;transition:all .18s;box-shadow:0 0 28px rgba(255,215,0,.35)"
+          color:#141414;transition:all .18s;box-shadow:0 0 28px rgba(255,215,0,.35)"
         onmouseenter="this.style.transform='scale(1.07)'"
         onmouseleave="this.style.transform='scale(1)'">
         {#if $_playing}
@@ -474,7 +499,7 @@
 
 {#if $_m3v}
 <div style="position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
-  background:rgba(8,8,5,.94);backdrop-filter:blur(22px);
+  background:rgba(18,18,18,.94);backdrop-filter:blur(22px);
   overscroll-behavior:contain;overflow:hidden">
 
   <div style="position:relative;width:96px;height:96px">
@@ -482,14 +507,14 @@
       border:2px solid rgba(255,215,0,.1);border-top-color:rgba(255,215,0,.55);
       animation:_sp 2s linear infinite"></div>
     <div style="position:absolute;inset:7px;border-radius:50%;
-      background:#111008;
+      background:#1a1a1a;
       border:1.5px solid rgba(255,215,0,.14)"></div>
     <div style="position:absolute;inset:20px;border-radius:50%;
       background:rgba(255,215,0,.07);
       border:1px solid rgba(255,215,0,.18);
       animation:_pl 1.8s ease-in-out infinite"></div>
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-      width:11px;height:11px;border-radius:50%;background:#0e0d07;
+      width:11px;height:11px;border-radius:50%;background:#181818;
       border:1.5px solid rgba(255,215,0,.32)"></div>
     <div style="position:absolute;inset:-11px;border-radius:50%;
       border:1.5px solid transparent;border-top-color:#FFD700;border-right-color:rgba(255,215,0,.12);
@@ -557,9 +582,7 @@
     cursor: pointer;
     transition: transform .12s;
   }
-  .seek-range::-webkit-slider-thumb:active {
-    transform: scale(1.25);
-  }
+  .seek-range::-webkit-slider-thumb:active { transform: scale(1.25); }
   .seek-range::-moz-range-thumb {
     width: 13px;
     height: 13px;
