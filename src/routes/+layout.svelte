@@ -93,13 +93,11 @@
 
   $: if (_prev) {
     if ($_playing) {
-      _audioEl?.play();
+      if (_audioEl?.paused) _audioEl.play().catch(() => {});
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-      _startTick();
     } else {
-      _audioEl?.pause();
+      if (_audioEl && !_audioEl.paused) _audioEl.pause();
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-      if (_ticker) { clearInterval(_ticker); _ticker = null; }
     }
   }
 
