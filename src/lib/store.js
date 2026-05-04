@@ -6,3 +6,5 @@ export const _m3v = writable(false);
 export const _r7w = writable(false);
 export const _playing = writable(false);
 export const _showNP = writable(false);
+export const _searchQuery = writable('');
+export const _searchResults = writable([]);
