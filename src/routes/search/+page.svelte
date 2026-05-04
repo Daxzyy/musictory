@@ -17,11 +17,11 @@
 
   $: _deb(_qv);
 
-  async function _pl(item, idx) {
+  function _pl(item, idx) {
     _m3v.set(true);
-    await new Promise(r => setTimeout(r, 1400 + Math.random() * 600));
-    _q8z.set(item); _x9a.set(idx); _p1k.set(_ds);
-    _m3v.set(false);
+    _p1k.set(_ds);
+    _x9a.set(idx);
+    _q8z.set(item);
   }
 
   function _fmt(v) {
