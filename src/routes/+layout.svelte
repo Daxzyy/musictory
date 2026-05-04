@@ -20,6 +20,8 @@
     return 0;
   }
   function _s2dur(s) {
+    if (!s || !isFinite(s) || isNaN(s)) return '0:00';
+    s = Math.max(0, Math.floor(s));
     const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
     if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     return `${m}:${String(sec).padStart(2,'0')}`;
@@ -148,11 +150,13 @@
     _seeking = true;
   }
   function _onSeekInput(e) {
+    if (!_total || !isFinite(_total)) return;
     const val = Number(e.target.value);
     _elapsed = Math.round((val / 100) * _total);
     _pct = val;
   }
   function _onSeekEnd(e) {
+    if (!_total || !isFinite(_total)) { _seeking = false; return; }
     const val = Number(e.target.value);
     const target = Math.round((val / 100) * _total);
     if (_audioEl) _audioEl.currentTime = target;
@@ -248,10 +252,12 @@
       </div>
     </div>
 
-    <div style="position:relative;height:3px;border-radius:99px;background:rgba(255,215,0,.1);cursor:pointer">
-      <div style="height:100%;width:{_pct}%;border-radius:99px;
-        background:linear-gradient(to right,#FFD700,#FFC300);
-        transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '6px':'0'}"></div>
+    <div style="position:relative;height:14px;display:flex;align-items:center;cursor:pointer">
+      <div style="position:absolute;left:0;right:0;height:3px;border-radius:99px;background:rgba(255,215,0,.1)">
+        <div style="height:100%;width:{_pct}%;border-radius:99px;
+          background:linear-gradient(to right,#FFD700,#FFC300);
+          transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '6px':'0'}"></div>
+      </div>
       <input
         type="range" min="0" max="100" step="0.1"
         value={_pct}
@@ -261,8 +267,8 @@
         on:change={_onSeekEnd}
         on:mouseup={_onSeekEnd}
         on:touchend={_onSeekEnd}
-        style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0;padding:0;
-          -webkit-appearance:none;appearance:none;background:transparent;touch-action:none" />
+        class="seek-range"
+        style="position:absolute;left:0;right:0;width:100%;margin:0;padding:0;touch-action:none" />
     </div>
 
   </div>
@@ -308,28 +314,30 @@
       <p style="font-size:.72rem;color:rgba(255,215,0,.4)">{$_q8z.duration}</p>
     </div>
 
-    <div style="width:100%">
-      <div style="position:relative;height:4px;border-radius:99px;background:rgba(255,215,0,.1);margin-bottom:8px;cursor:pointer">
-        <div style="height:100%;width:{_pct}%;border-radius:99px;
-          background:linear-gradient(to right,#FFD700,#FFC300);
-          transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '8px':'0'}"></div>
-        <input
-          type="range" min="0" max="100" step="0.1"
-          value={_pct}
-          on:mousedown={_onSeekStart}
-          on:touchstart={_onSeekStart}
-          on:input={_onSeekInput}
-          on:change={_onSeekEnd}
-          on:mouseup={_onSeekEnd}
-          on:touchend={_onSeekEnd}
-          style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0;padding:0;
-            -webkit-appearance:none;appearance:none;background:transparent;touch-action:none" />
+      <div style="width:100%">
+        <div style="position:relative;height:18px;display:flex;align-items:center;margin-bottom:8px;cursor:pointer">
+          <div style="position:absolute;left:0;right:0;height:4px;border-radius:99px;background:rgba(255,215,0,.1)">
+            <div style="height:100%;width:{_pct}%;border-radius:99px;
+              background:linear-gradient(to right,#FFD700,#FFC300);
+              transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '8px':'0'}"></div>
+          </div>
+          <input
+            type="range" min="0" max="100" step="0.1"
+            value={_pct}
+            on:mousedown={_onSeekStart}
+            on:touchstart={_onSeekStart}
+            on:input={_onSeekInput}
+            on:change={_onSeekEnd}
+            on:mouseup={_onSeekEnd}
+            on:touchend={_onSeekEnd}
+            class="seek-range"
+            style="position:absolute;left:0;right:0;width:100%;margin:0;padding:0;touch-action:none" />
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)}</span>
+          <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{$_q8z.duration}</span>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between">
-        <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)}</span>
-        <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{$_q8z.duration}</span>
-      </div>
-    </div>
 
     <div style="display:flex;align-items:center;justify-content:center;gap:20px">
       <button on:click={_prv}
@@ -388,38 +396,37 @@
 </nav>
 
 {#if $_m3v}
-<div style="position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
-  background:rgba(8,8,5,.92);backdrop-filter:blur(20px);
+<div style="position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
+  background:rgba(8,8,5,.94);backdrop-filter:blur(22px);
   overscroll-behavior:none;touch-action:none;overflow:hidden">
-  <div class="glass glow" style="border-radius:24px;padding:36px 32px;display:flex;flex-direction:column;align-items:center;gap:22px;max-width:280px;margin:0 16px;text-align:center">
 
-    <div style="position:relative;width:88px;height:88px">
-      <div style="position:absolute;inset:0;border-radius:50%;
-        border:2px solid rgba(255,215,0,.12);border-top-color:rgba(255,215,0,.5);
-        animation:_sp 2s linear infinite"></div>
-      <div style="position:absolute;inset:6px;border-radius:50%;
-        background:#111008;
-        border:1.5px solid rgba(255,215,0,.15)"></div>
-      <div style="position:absolute;inset:18px;border-radius:50%;
-        background:linear-gradient(135deg,rgba(255,215,0,.18),rgba(255,195,0,.08));
-        border:1px solid rgba(255,215,0,.2);
-        animation:_pl 1.8s ease-in-out infinite"></div>
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-        width:10px;height:10px;border-radius:50%;background:#0e0d07;
-        border:1.5px solid rgba(255,215,0,.35)"></div>
-      <div style="position:absolute;inset:-10px;border-radius:50%;
-        border:1.5px solid transparent;border-top-color:#FFD700;border-right-color:rgba(255,215,0,.15);
-        animation:_sp 1.4s linear infinite reverse"></div>
-    </div>
-
-    <div style="display:flex;align-items:flex-end;gap:4px;height:28px">
-      {#each [1,2,3,4,5] as bar}
-        <div class="eqbar-lg eqbar-lg{bar}" style="width:5px;border-radius:3px;background:#FFD700;opacity:.85"></div>
-      {/each}
-    </div>
-
-    <p style="color:#FFF6CC;font-size:.85rem;line-height:1.65;font-weight:400">sabar yaa, server kami butuh waktu untuk merespon🥰</p>
+  <div style="position:relative;width:96px;height:96px">
+    <div style="position:absolute;inset:0;border-radius:50%;
+      border:2px solid rgba(255,215,0,.1);border-top-color:rgba(255,215,0,.55);
+      animation:_sp 2s linear infinite"></div>
+    <div style="position:absolute;inset:7px;border-radius:50%;
+      background:#111008;
+      border:1.5px solid rgba(255,215,0,.14)"></div>
+    <div style="position:absolute;inset:20px;border-radius:50%;
+      background:rgba(255,215,0,.07);
+      border:1px solid rgba(255,215,0,.18);
+      animation:_pl 1.8s ease-in-out infinite"></div>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:11px;height:11px;border-radius:50%;background:#0e0d07;
+      border:1.5px solid rgba(255,215,0,.32)"></div>
+    <div style="position:absolute;inset:-11px;border-radius:50%;
+      border:1.5px solid transparent;border-top-color:#FFD700;border-right-color:rgba(255,215,0,.12);
+      animation:_sp 1.4s linear infinite reverse"></div>
   </div>
+
+  <div style="display:flex;align-items:flex-end;gap:4px;height:32px">
+    {#each [1,2,3,4,5] as bar}
+      <div class="eqbar-lg eqbar-lg{bar}" style="width:5px;border-radius:3px;background:#FFD700;opacity:.8"></div>
+    {/each}
+  </div>
+
+  <p style="color:rgba(255,246,204,.6);font-size:.82rem;line-height:1.7;font-weight:400;text-align:center;max-width:220px">sabar yaa, server kami butuh waktu untuk merespon🥰</p>
+
 </div>
 {/if}
 
@@ -452,4 +459,39 @@
   @keyframes _eql3 { from{height:14px} to{height:28px} }
   @keyframes _eql4 { from{height:6px} to{height:20px} }
   @keyframes _eql5 { from{height:10px} to{height:24px} }
+
+  .seek-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 100%;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+  }
+  .seek-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid rgba(255,215,0,.6);
+    box-shadow: 0 0 6px rgba(255,215,0,.35);
+    cursor: pointer;
+    transition: transform .12s;
+  }
+  .seek-range::-webkit-slider-thumb:active {
+    transform: scale(1.25);
+  }
+  .seek-range::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid rgba(255,215,0,.6);
+    box-shadow: 0 0 6px rgba(255,215,0,.35);
+    cursor: pointer;
+  }
+  .seek-range::-webkit-slider-runnable-track { background: transparent; }
+  .seek-range::-moz-range-track { background: transparent; }
 </style>
