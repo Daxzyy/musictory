@@ -1,3 +1,26 @@
+const _SECRET = 'msc_s3cr3t_g1vy_2026';
+const _ENC_KEY = async () => {
+  const raw = new Uint8Array([0x4d,0x7a,0x9c,0x2e,0x1f,0x8b,0x3a,0x6d,0x0e,0x5c,0x9f,0x2b,0x7a,0x4e,0x1d,0x8c]);
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-CBC' }, false, ['decrypt']);
+};
+
+const _b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function _decrypt(d, ivB64) {
+  const key = await _ENC_KEY();
+  const iv = _b64(ivB64);
+  const data = _b64(d);
+  const dec = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, data);
+  return JSON.parse(new TextDecoder().decode(dec));
+}
+
+async function _sign(ts, q) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(`${ts}:${q}`));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 const _CK = '_msc_urls';
 const _TTL = 3 * 60 * 60 * 1000;
 
@@ -20,10 +43,12 @@ function _saveCache(c) {
 const _mem = new Map();
 
 export async function _g9(q) {
-  const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-  const data = await r.json();
-  if (!Array.isArray(data)) return [];
-  return data;
+  const ts = Date.now();
+  const sig = await _sign(ts, q);
+  const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&ts=${ts}&sig=${sig}`);
+  const j = await r.json();
+  if (!j.d || !j.iv) return [];
+  return await _decrypt(j.d, j.iv);
 }
 
 export async function _getStreamUrl(videoId) {
