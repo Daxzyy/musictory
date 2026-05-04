@@ -54,19 +54,29 @@
     if (!_isSwiping) return;
     _swipeDeltaY = e.touches[0].clientY - _swipeStartY;
     if (_swipeDeltaY > 0 && _playerEl) {
-      _playerEl.style.transform = `translateY(${Math.min(_swipeDeltaY * 0.5, 40)}px)`;
-      _playerEl.style.opacity = `${Math.max(0.4, 1 - _swipeDeltaY / 160)}`;
+      _playerEl.style.transition = "none";
+      _playerEl.style.transform = `translateY(${Math.min(_swipeDeltaY * 0.7, 90)}px)`;
+      _playerEl.style.opacity = `${Math.max(0.2, 1 - _swipeDeltaY / 100)}`;
     }
   }
 
   function _onPlayerTouchEnd() {
     _isSwiping = false;
-    if (_playerEl) {
-      _playerEl.style.transform = '';
-      _playerEl.style.opacity = '';
-    }
     if (_swipeDeltaY > 60) {
-      _closeTrack();
+      if (_playerEl) {
+        _playerEl.style.transition = 'transform .18s ease, opacity .18s ease';
+        _playerEl.style.transform = 'translateY(120px)';
+        _playerEl.style.opacity = '0';
+        setTimeout(() => _closeTrack(), 180);
+      } else {
+        _closeTrack();
+      }
+    } else {
+      if (_playerEl) {
+        _playerEl.style.transition = 'transform .2s ease, opacity .2s ease';
+        _playerEl.style.transform = '';
+        _playerEl.style.opacity = '';
+      }
     }
     _swipeDeltaY = 0;
   }
