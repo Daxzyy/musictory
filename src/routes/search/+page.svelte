@@ -1,21 +1,58 @@
 <script>
   import { _g9 } from '$lib/api.js';
-  import { _q8z, _m3v, _p1k, _x9a } from '$lib/store.js';
+  import { _q8z, _m3v, _p1k, _x9a, _searchQuery, _searchResults } from '$lib/store.js';
 
-  let _qv = '', _ds = [], _ld = false, _t = null, _init = false;
+  let _ld = false, _t = null, _init = false;
+
+  let _qv = '';
+  let _ds = [];
+
+  const unsubQ = _searchQuery.subscribe(v => { _qv = v; });
+  const unsubR = _searchResults.subscribe(v => {
+    _ds = v;
+    if (v.length > 0) _init = true;
+  });
+
+  import { onDestroy } from 'svelte';
+  onDestroy(() => { unsubQ(); unsubR(); });
 
   function _deb(val) {
     if (_t) clearTimeout(_t);
-    if (!val.trim()) { _ds = []; _init = false; return; }
-    _ld = true; _init = true;
+    if (!val.trim()) {
+      _ds = [];
+      _searchResults.set([]);
+      _init = false;
+      return;
+    }
+    _ld = true;
+    _init = true;
     _t = setTimeout(async () => {
-      try { _ds = await _g9(val); _p1k.set(_ds); }
-      catch (e) { _ds = []; }
-      finally { _ld = false; }
+      try {
+        const results = await _g9(val);
+        _ds = results;
+        _searchResults.set(results);
+        _p1k.set(results);
+      } catch (e) {
+        _ds = [];
+        _searchResults.set([]);
+      } finally {
+        _ld = false;
+      }
     }, 300);
   }
 
-  $: _deb(_qv);
+  function _onInput(e) {
+    const val = e.target.value;
+    _searchQuery.set(val);
+    _deb(val);
+  }
+
+  function _clear() {
+    _searchQuery.set('');
+    _searchResults.set([]);
+    _ds = [];
+    _init = false;
+  }
 
   function _pl(item, idx) {
     _m3v.set(true);
@@ -46,7 +83,8 @@
         <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       </div>
       <input
-        bind:value={_qv}
+        value={_qv}
+        on:input={_onInput}
         type="text"
         placeholder="Cari lagu, artis, album..."
         style="width:100%;background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,.16);color:#FFF6CC;
@@ -56,7 +94,7 @@
         on:blur={e => { e.target.style.borderColor='rgba(255,215,0,.16)'; e.target.style.boxShadow='none'; }}
       />
       {#if _qv}
-        <button on:click={() => { _qv = ''; _ds = []; _init = false; }}
+        <button on:click={_clear}
           style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,246,204,.4);background:none;border:none;cursor:pointer;padding:4px;transition:color .15s"
           onmouseenter="this.style.color='rgba(255,246,204,.8)'" onmouseleave="this.style.color='rgba(255,246,204,.4)'">
           <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
