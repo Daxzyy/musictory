@@ -6,31 +6,31 @@
 * { font-family: 'Quicksand', sans-serif; box-sizing: border-box; }
 
 body {
-  background: #0A0A0A;
+  background: #141414;
   color: #FFF6CC;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
 }
 
 ::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: #111; }
+::-webkit-scrollbar-track { background: #1a1a1a; }
 ::-webkit-scrollbar-thumb { background: #FFD700; border-radius: 2px; }
 
 .glass {
-  background: rgba(30, 28, 20, 0.75);
+  background: rgba(40, 38, 30, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 215, 0, 0.12);
 }
 
 .glass-card {
-  background: rgba(22, 20, 14, 0.9);
+  background: rgba(30, 28, 22, 0.9);
   border: 1px solid rgba(255, 215, 0, 0.1);
   transition: all 0.18s ease;
 }
 
 .glass-card:hover {
-  background: rgba(38, 34, 18, 0.98);
+  background: rgba(44, 42, 28, 0.98);
   border-color: rgba(255, 215, 0, 0.3);
   transform: scale(1.015);
   box-shadow: 0 4px 22px rgba(255, 215, 0, 0.12);
@@ -65,11 +65,11 @@ body {
 }
 
 .nav-bar {
-  background: #111008;
+  background: #1a1a1a;
   border-top: 1px solid rgba(255,215,0,.14);
 }
 
 .player-bar {
-  background: #0e0d07;
+  background: #181818;
   border-top: 1px solid rgba(255,215,0,.14);
 }
