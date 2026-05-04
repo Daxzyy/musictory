@@ -209,6 +209,16 @@
     _seeking = false;
   }
 
+  function _closeTrack() {
+    if (_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
+    if (_ticker) clearInterval(_ticker);
+    _elapsed = 0; _total = 0; _pct = 0;
+    _playing.set(false);
+    _showNP.set(false);
+    _q8z.set(null);
+    _setBodyLock(false);
+  }
+
   // Buka NP overlay + sync seekEl2 ke posisi yg bener via rAF
   // rAF jalan setelah DOM paint — seekEl2 udah ada, ga trigger Svelte reactivity
   function _openNP() {
@@ -306,6 +316,15 @@
           onmouseenter="this.style.background='rgba(255,215,0,.18)';this.style.color='#FFD700'"
           onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.color='rgba(255,246,204,.55)'">
           <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6h2v12h-2zm-3.5 6L4 6v12z"/></svg>
+        </button>
+
+        <button on:click={_closeTrack}
+          style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+            background:rgba(255,80,80,.08);border:1px solid rgba(255,80,80,.18);cursor:pointer;
+            color:rgba(255,120,120,.6);transition:all .15s;margin-left:2px"
+          onmouseenter="this.style.background='rgba(255,80,80,.22)';this.style.color='#ff6b6b'"
+          onmouseleave="this.style.background='rgba(255,80,80,.08)';this.style.color='rgba(255,120,120,.6)'">
+          <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </div>
     </div>
