@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { _q8z, _m3v, _p1k, _x9a, _playing, _showNP } from '$lib/store.js';
   import { _getStreamUrl } from '$lib/api.js';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
 
   $: _rt = $page.url.pathname;
 
@@ -78,7 +78,21 @@
     } catch(_) {}
   }
 
-  $: if ($_q8z && $_q8z !== _prev) {
+  let _mounted = false;
+
+  onMount(() => {
+    _mounted = true;
+    if ($_q8z && $_q8z !== _prev) {
+      _prev = $_q8z;
+      _elapsed = 0;
+      _total = _dur2s($_q8z.duration);
+      _pct = 0;
+      _playing.set(true);
+      _loadAndPlay($_q8z);
+    }
+  });
+
+  $: if (_mounted && $_q8z && $_q8z !== _prev) {
     _prev = $_q8z;
     _elapsed = 0;
     _total = _dur2s($_q8z.duration);
@@ -88,6 +102,7 @@
   }
 
   async function _loadAndPlay(track) {
+    await tick();
     if (!_audioEl) return;
     _loading = true;
     _m3v.set(true);
@@ -98,7 +113,16 @@
     _m3v.set(false);
     if (!url) return;
     _audioEl.src = url;
-    await _audioEl.play().catch(() => {});
+    _audioEl.load();
+    try {
+      await _audioEl.play();
+    } catch(e) {
+      const onCanPlay = () => {
+        _audioEl.removeEventListener('canplay', onCanPlay);
+        _audioEl.play().catch(() => {});
+      };
+      _audioEl.addEventListener('canplay', onCanPlay);
+    }
     _setMediaSession(track);
     _startTick();
   }
