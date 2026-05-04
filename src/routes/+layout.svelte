@@ -16,13 +16,7 @@
 
   $: _setBodyLock($_showNP || $_m3v);
 
-  // FIX: Sync seekEl2 ke posisi yg bener pas NowPlaying overlay baru dibuka
-  // Pake tick() di sini aman karena cuma set .value DOM element, ga trigger re-render
-  $: if ($_showNP) {
-    tick().then(() => {
-      if (_seekEl2) _seekEl2.value = _pct;
-    });
-  }
+
 
   function _dur2s(d) {
     if (!d) return 0;
@@ -215,11 +209,18 @@
     _seeking = false;
   }
 
-  // FIX: Close NowPlaying — pastiin body unlock & scroll normal balik
+  // Buka NP overlay + sync seekEl2 ke posisi yg bener via rAF
+  // rAF jalan setelah DOM paint — seekEl2 udah ada, ga trigger Svelte reactivity
+  function _openNP() {
+    _openNP();
+    requestAnimationFrame(() => {
+      if (_seekEl2) _seekEl2.value = _pct;
+    });
+  }
+
   function _closeNP() {
     _showNP.set(false);
-    // Paksa body overflow reset setelah DOM update
-    tick().then(() => _setBodyLock(false));
+    _setBodyLock(false);
   }
 </script>
 
@@ -241,7 +242,7 @@
 
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;position:relative;z-index:2">
 
-      <button on:click={() => _showNP.set(true)}
+      <button on:click={() => _openNP()}
         style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
 
         <div style="position:relative;flex-shrink:0;width:46px;height:46px">
