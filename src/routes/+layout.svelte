@@ -8,6 +8,12 @@
 
   $: _rt = $page.url.pathname;
 
+  $: if ($_showNP) {
+    tick().then(() => {
+      if (_seekEl2) _seekEl2.value = _pct;
+    });
+  }
+
   $: if (typeof document !== 'undefined') {
     document.body.style.overflow = ($_showNP || $_m3v) ? 'hidden' : '';
   }
