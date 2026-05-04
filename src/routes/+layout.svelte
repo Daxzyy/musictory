@@ -27,6 +27,7 @@
   let _ticker = null;
   let _prev = null;
   let _audioEl = null;
+  let _loading = false;
 
   function _setMediaSession(track) {
     if (!('mediaSession' in navigator)) return;
@@ -81,18 +82,20 @@
 
   async function _loadAndPlay(track) {
     if (!_audioEl) return;
+    _loading = true;
     _audioEl.pause();
     _audioEl.src = '';
     const url = await _getStreamUrl(track.videoId);
     _m3v.set(false);
-    if (!url) return;
+    if (!url) { _loading = false; return; }
     _audioEl.src = url;
     await _audioEl.play().catch(() => {});
+    _loading = false;
     _setMediaSession(track);
     _startTick();
   }
 
-  $: if (_prev) {
+  $: if (_prev && !_loading) {
     if ($_playing) {
       if (_audioEl?.paused) _audioEl.play().catch(() => {});
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
@@ -116,7 +119,12 @@
   onDestroy(() => {
     if (_ticker) clearInterval(_ticker);
     if (_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
+    document.body.style.overflow = '';
   });
+
+  $: if (typeof document !== 'undefined') {
+    document.body.style.overflow = $_showNP ? 'hidden' : '';
+  }
 
   function _nxt() {
     const a = $_p1k, b = $_x9a;
