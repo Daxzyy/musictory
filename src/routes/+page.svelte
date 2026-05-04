@@ -11,7 +11,8 @@
     'lagu viral tiktok 2026',
     'dj terbaru 2026',
     'lagu sad terbaru 2026',
-    'lagu galau terbaru 2026',
+    'about you',
+    'lagu trend tiktok 2026',
   ];
 
   function _shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
