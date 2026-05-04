@@ -9,7 +9,7 @@
   $: _rt = $page.url.pathname;
 
   $: if (typeof document !== 'undefined') {
-    document.body.style.overflow = $_showNP ? 'hidden' : '';
+    document.body.style.overflow = ($_showNP || $_m3v) ? 'hidden' : '';
   }
 
   function _dur2s(d) {
@@ -32,6 +32,7 @@
   let _prev = null;
   let _audioEl = null;
   let _loading = false;
+  let _seeking = false;
 
   function _setMediaSession(track) {
     if (!('mediaSession' in navigator)) return;
@@ -87,11 +88,12 @@
   async function _loadAndPlay(track) {
     if (!_audioEl) return;
     _loading = true;
+    _m3v.set(true);
     _audioEl.pause();
     _audioEl.src = '';
     const url = await _getStreamUrl(track.videoId);
-    _m3v.set(false);
     _loading = false;
+    _m3v.set(false);
     if (!url) return;
     _audioEl.src = url;
     await _audioEl.play().catch(() => {});
@@ -112,7 +114,7 @@
   function _startTick() {
     if (_ticker) clearInterval(_ticker);
     _ticker = setInterval(() => {
-      if (!$_playing || !_audioEl) return;
+      if (!$_playing || !_audioEl || _seeking) return;
       _elapsed = Math.floor(_audioEl.currentTime);
       _total = _audioEl.duration && !isNaN(_audioEl.duration) ? Math.floor(_audioEl.duration) : _total;
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
@@ -140,6 +142,23 @@
   }
   function _togglePlay() {
     _playing.update(v => !v);
+  }
+
+  function _onSeekStart() {
+    _seeking = true;
+  }
+  function _onSeekInput(e) {
+    const val = Number(e.target.value);
+    _elapsed = Math.round((val / 100) * _total);
+    _pct = val;
+  }
+  function _onSeekEnd(e) {
+    const val = Number(e.target.value);
+    const target = Math.round((val / 100) * _total);
+    if (_audioEl) _audioEl.currentTime = target;
+    _elapsed = target;
+    _pct = val;
+    _seeking = false;
   }
 </script>
 
@@ -229,10 +248,21 @@
       </div>
     </div>
 
-    <div style="height:3px;border-radius:99px;background:rgba(255,215,0,.1)">
+    <div style="position:relative;height:3px;border-radius:99px;background:rgba(255,215,0,.1);cursor:pointer">
       <div style="height:100%;width:{_pct}%;border-radius:99px;
         background:linear-gradient(to right,#FFD700,#FFC300);
-        transition:width 1s linear;min-width:{_pct>0 ? '6px':'0'}"></div>
+        transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '6px':'0'}"></div>
+      <input
+        type="range" min="0" max="100" step="0.1"
+        value={_pct}
+        on:mousedown={_onSeekStart}
+        on:touchstart={_onSeekStart}
+        on:input={_onSeekInput}
+        on:change={_onSeekEnd}
+        on:mouseup={_onSeekEnd}
+        on:touchend={_onSeekEnd}
+        style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0;padding:0;
+          -webkit-appearance:none;appearance:none;background:transparent;touch-action:none" />
     </div>
 
   </div>
@@ -279,10 +309,21 @@
     </div>
 
     <div style="width:100%">
-      <div style="height:4px;border-radius:99px;background:rgba(255,215,0,.1);margin-bottom:8px">
+      <div style="position:relative;height:4px;border-radius:99px;background:rgba(255,215,0,.1);margin-bottom:8px;cursor:pointer">
         <div style="height:100%;width:{_pct}%;border-radius:99px;
           background:linear-gradient(to right,#FFD700,#FFC300);
-          transition:width 1s linear;min-width:{_pct>0 ? '8px':'0'}"></div>
+          transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '8px':'0'}"></div>
+        <input
+          type="range" min="0" max="100" step="0.1"
+          value={_pct}
+          on:mousedown={_onSeekStart}
+          on:touchstart={_onSeekStart}
+          on:input={_onSeekInput}
+          on:change={_onSeekEnd}
+          on:mouseup={_onSeekEnd}
+          on:touchend={_onSeekEnd}
+          style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0;padding:0;
+            -webkit-appearance:none;appearance:none;background:transparent;touch-action:none" />
       </div>
       <div style="display:flex;justify-content:space-between">
         <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)}</span>
@@ -347,12 +388,36 @@
 </nav>
 
 {#if $_m3v}
-<div class="overlay-enter" style="position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(8,8,5,.9);backdrop-filter:blur(20px)">
-  <div class="glass glow" style="border-radius:24px;padding:36px 32px;display:flex;flex-direction:column;align-items:center;gap:18px;max-width:270px;margin:0 16px;text-align:center">
-    <div style="position:relative;width:52px;height:52px">
-      <div style="position:absolute;inset:0;border-radius:50%;border:2.5px solid rgba(255,215,0,.15);border-top-color:#FFD700;animation:_sp .85s linear infinite"></div>
-      <div style="position:absolute;inset:6px;border-radius:50%;background:linear-gradient(135deg,#FFD700,#FFC300);opacity:.75;animation:_pl 1.4s ease infinite"></div>
+<div style="position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  background:rgba(8,8,5,.92);backdrop-filter:blur(20px);
+  overscroll-behavior:none;touch-action:none;overflow:hidden">
+  <div class="glass glow" style="border-radius:24px;padding:36px 32px;display:flex;flex-direction:column;align-items:center;gap:22px;max-width:280px;margin:0 16px;text-align:center">
+
+    <div style="position:relative;width:88px;height:88px">
+      <div style="position:absolute;inset:0;border-radius:50%;
+        border:2px solid rgba(255,215,0,.12);border-top-color:rgba(255,215,0,.5);
+        animation:_sp 2s linear infinite"></div>
+      <div style="position:absolute;inset:6px;border-radius:50%;
+        background:#111008;
+        border:1.5px solid rgba(255,215,0,.15)"></div>
+      <div style="position:absolute;inset:18px;border-radius:50%;
+        background:linear-gradient(135deg,rgba(255,215,0,.18),rgba(255,195,0,.08));
+        border:1px solid rgba(255,215,0,.2);
+        animation:_pl 1.8s ease-in-out infinite"></div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        width:10px;height:10px;border-radius:50%;background:#0e0d07;
+        border:1.5px solid rgba(255,215,0,.35)"></div>
+      <div style="position:absolute;inset:-10px;border-radius:50%;
+        border:1.5px solid transparent;border-top-color:#FFD700;border-right-color:rgba(255,215,0,.15);
+        animation:_sp 1.4s linear infinite reverse"></div>
     </div>
+
+    <div style="display:flex;align-items:flex-end;gap:4px;height:28px">
+      {#each [1,2,3,4,5] as bar}
+        <div class="eqbar-lg eqbar-lg{bar}" style="width:5px;border-radius:3px;background:#FFD700;opacity:.85"></div>
+      {/each}
+    </div>
+
     <p style="color:#FFF6CC;font-size:.85rem;line-height:1.65;font-weight:400">sabar yaa, server kami butuh waktu untuk merespon🥰</p>
   </div>
 </div>
@@ -360,7 +425,7 @@
 
 <style>
   @keyframes _sp   { to { transform: rotate(360deg); } }
-  @keyframes _pl   { 0%,100%{opacity:.55} 50%{opacity:.9} }
+  @keyframes _pl   { 0%,100%{opacity:.4;transform:scale(.95)} 50%{opacity:.9;transform:scale(1.05)} }
   @keyframes _ring { to { transform: rotate(360deg); } }
   @keyframes _spin { to { transform: rotate(360deg); } }
 
@@ -374,4 +439,17 @@
   @keyframes _eq2 { from{height:5px} to{height:10px} }
   @keyframes _eq3 { from{height:3px} to{height:8px}  }
   @keyframes _eq4 { from{height:7px} to{height:4px}  }
+
+  .eqbar-lg { height: 4px; }
+  .eqbar-lg1 { animation: _eql1 .45s ease-in-out infinite alternate; }
+  .eqbar-lg2 { animation: _eql2 .65s ease-in-out infinite alternate; }
+  .eqbar-lg3 { animation: _eql3 .55s ease-in-out infinite alternate; }
+  .eqbar-lg4 { animation: _eql4 .38s ease-in-out infinite alternate; }
+  .eqbar-lg5 { animation: _eql5 .72s ease-in-out infinite alternate; }
+
+  @keyframes _eql1 { from{height:4px} to{height:22px} }
+  @keyframes _eql2 { from{height:8px} to{height:26px} }
+  @keyframes _eql3 { from{height:14px} to{height:28px} }
+  @keyframes _eql4 { from{height:6px} to{height:20px} }
+  @keyframes _eql5 { from{height:10px} to{height:24px} }
 </style>
