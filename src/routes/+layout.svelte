@@ -212,7 +212,7 @@
   // Buka NP overlay + sync seekEl2 ke posisi yg bener via rAF
   // rAF jalan setelah DOM paint — seekEl2 udah ada, ga trigger Svelte reactivity
   function _openNP() {
-    _openNP();
+    _showNP.set(true);
     requestAnimationFrame(() => {
       if (_seekEl2) _seekEl2.value = _pct;
     });
