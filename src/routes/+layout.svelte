@@ -8,6 +8,12 @@
 
   $: _rt = $page.url.pathname;
 
+  $: if ($_q8z) {
+    tick().then(() => {
+      if (_seekEl1) _seekEl1.value = _pct;
+    });
+  }
+
   $: if ($_showNP) {
     tick().then(() => {
       if (_seekEl2) _seekEl2.value = _pct;
@@ -225,7 +231,7 @@
 <div class="player-bar" style="position:fixed;bottom:58px;left:0;right:0;z-index:40;padding:12px 16px 10px">
   <div style="max-width:560px;margin:0 auto">
 
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;position:relative;z-index:2">
 
       <button on:click={() => _showNP.set(true)}
         style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
@@ -295,8 +301,8 @@
       </div>
     </div>
 
-    <div style="position:relative;height:14px;display:flex;align-items:center;cursor:pointer">
-      <div style="position:absolute;left:0;right:0;height:3px;border-radius:99px;background:rgba(255,215,0,.1)">
+    <div style="position:relative;height:14px;display:flex;align-items:center">
+      <div style="position:absolute;left:0;right:0;height:3px;border-radius:99px;background:rgba(255,215,0,.1);pointer-events:none">
         <div style="height:100%;width:{_pct}%;border-radius:99px;
           background:linear-gradient(to right,#FFD700,#FFC300);
           transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '6px':'0'}"></div>
@@ -310,7 +316,7 @@
         on:mouseup={_onSeekEnd}
         on:touchend={_onSeekEnd}
         class="seek-range"
-        style="position:absolute;left:0;right:0;width:100%;margin:0;padding:0;touch-action:none" />
+        style="position:absolute;left:0;right:0;width:100%;margin:0;padding:0;touch-action:none;z-index:1" />
     </div>
 
   </div>
