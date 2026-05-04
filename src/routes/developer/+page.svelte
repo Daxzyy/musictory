@@ -13,7 +13,7 @@
     </div>
   </div>
 
-  <div class="glass-card" style="border-radius:18px;padding:20px;margin-bottom:14px;display:flex;gap:16px;align-items:center">
+  <div style="border-radius:18px;padding:20px;margin-bottom:14px;display:flex;gap:16px;align-items:center;background:rgba(22,20,14,0.9);border:1px solid rgba(255,215,0,0.1)">
     <div style="width:52px;height:52px;flex-shrink:0;border-radius:14px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.2);display:flex;align-items:center;justify-content:center">
       <svg width="26" height="26" fill="#FFD700" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
     </div>
@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <div class="glass-card" style="border-radius:18px;padding:20px;margin-bottom:14px">
+  <div style="border-radius:18px;padding:20px;margin-bottom:14px;background:rgba(22,20,14,0.9);border:1px solid rgba(255,215,0,0.1)">
     <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.45);letter-spacing:.1em;margin:0 0 14px">KENAPA MUSICTORY?</p>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;gap:12px;align-items:flex-start">
@@ -45,7 +45,7 @@
     </div>
   </div>
 
-  <div class="glass-card" style="border-radius:18px;padding:20px;margin-bottom:14px">
+  <div style="border-radius:18px;padding:20px;margin-bottom:14px;background:rgba(22,20,14,0.9);border:1px solid rgba(255,215,0,0.1)">
     <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.45);letter-spacing:.1em;margin:0 0 14px">CARA PAKAI</p>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;gap:12px;align-items:center">
@@ -62,17 +62,17 @@
       </div>
       <div style="display:flex;gap:12px;align-items:center">
         <div style="width:26px;height:26px;border-radius:50%;flex-shrink:0;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.25);display:flex;align-items:center;justify-content:center"><span style="font-size:.68rem;font-weight:700;color:#FFD700">4</span></div>
-        <p style="font-size:.8rem;color:rgba(255,246,204,.65);margin:0">Nikmati musiknya! 🎵</p>
+        <p style="font-size:.8rem;color:rgba(255,246,204,.65);margin:0">Nikmati musiknya! 🎶</p>
       </div>
     </div>
   </div>
 
-  <div class="glass-card" style="border-radius:18px;padding:20px;margin-bottom:14px">
+  <div style="border-radius:18px;padding:20px;margin-bottom:14px;background:rgba(22,20,14,0.9);border:1px solid rgba(255,215,0,0.1)">
     <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.45);letter-spacing:.1em;margin:0 0 12px">GIMANA CARA KERJANYA?</p>
     <p style="font-size:.78rem;color:rgba(255,246,204,.5);line-height:1.7;margin:0">Saat kamu cari lagu, Musictory langsung nyari ke internet dan nemuin lagunya buat kamu. Musiknya langsung diputar, <span style="color:rgba(255,246,204,.75)">tidak diunduh dan tidak disimpan</span> di HP kamu. Simpel dan hemat memori!</p>
   </div>
 
-  <div class="glass-card" style="border-radius:18px;padding:20px;margin-bottom:14px">
+  <div style="border-radius:18px;padding:20px;margin-bottom:14px;background:rgba(22,20,14,0.9);border:1px solid rgba(255,215,0,0.1)">
     <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.45);letter-spacing:.1em;margin:0 0 14px">UPDATE TERBARU</p>
     <div style="display:flex;gap:12px;align-items:flex-start">
       <div style="flex-shrink:0;padding:3px 9px;border-radius:99px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.2)">
@@ -90,26 +90,20 @@
     <p style="font-size:.74rem;color:rgba(255,246,204,.4);line-height:1.65;margin:0">Musictory tidak menyimpan atau mengunduh musik ke perangkatmu. App ini hanya sebagai pemutar streaming. Semua musik yang tersedia berasal dari sumber yang bisa diakses publik di internet.</p>
   </div>
 
-  <div class="glass-card" style="border-radius:18px;padding:20px;margin-bottom:14px">
+  <div style="border-radius:18px;padding:20px;margin-bottom:14px;background:rgba(22,20,14,0.9);border:1px solid rgba(255,215,0,0.1)">
     <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.45);letter-spacing:.1em;margin:0 0 12px">SARAN &amp; MASUKAN</p>
     <p style="font-size:.78rem;color:rgba(255,246,204,.45);line-height:1.65;margin:0 0 14px">Ada masukan, bug, atau saran fitur? Langsung hubungi pembuatnya ya!</p>
     <button on:click={openTiktok}
       style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.07);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .15s"
-      onmouseenter="this.style.background='rgba(255,215,0,.14)';this.style.borderColor='rgba(255,215,0,.4)'"
-      onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.borderColor='rgba(255,215,0,.25)'">
+      >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="#FFD700"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.17 8.17 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/></svg>
       <span style="font-size:.8rem;font-weight:700;color:#FFD700">Hubungi @gipii_ di TikTok</span>
     </button>
   </div>
 
   <div style="padding:20px 0 28px;text-align:center">
-    <p style="font-size:.7rem;color:rgba(255,246,204,.3);margin:0 0 6px">Dibuat dengan 🎵 oleh</p>
-    <button on:click={openTiktok}
-      style="background:none;border:none;cursor:pointer;padding:4px 0"
-      onmouseenter="this.querySelector('span').style.color='#FFD700'"
-      onmouseleave="this.querySelector('span').style.color='rgba(255,215,0,0.5)'">
-      <span style="font-size:.9rem;font-weight:700;color:rgba(255,215,0,0.5);transition:color .15s;text-decoration:underline;text-underline-offset:3px">Givy</span>
-    </button>
+    <p style="font-size:.7rem;color:rgba(255,246,204,.3);margin:0 0 6px">Dibuat dengan ❤️ oleh</p>
+    <a href="https://tiktok.com/@gipii_" target="_blank" style="font-size:.9rem;font-weight:700;color:rgba(255,215,0,0.6);text-decoration:underline;text-underline-offset:3px">Givy</a>
   </div>
 
 </div>
