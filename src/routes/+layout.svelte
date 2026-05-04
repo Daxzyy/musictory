@@ -8,9 +8,6 @@
 
   $: _rt = $page.url.pathname;
 
-  // FIX: Hapus reactive tick() buat seekEl2 — ini yg bikin corrupt state
-  // Sync seekEl2 cukup pas overlay beneran tampil via afterUpdate / manual
-
   // FIX: Body overflow — pake function biasa biar lebih predictable
   function _setBodyLock(locked) {
     if (typeof document === 'undefined') return;
@@ -18,6 +15,14 @@
   }
 
   $: _setBodyLock($_showNP || $_m3v);
+
+  // FIX: Sync seekEl2 ke posisi yg bener pas NowPlaying overlay baru dibuka
+  // Pake tick() di sini aman karena cuma set .value DOM element, ga trigger re-render
+  $: if ($_showNP) {
+    tick().then(() => {
+      if (_seekEl2) _seekEl2.value = _pct;
+    });
+  }
 
   function _dur2s(d) {
     if (!d) return 0;
