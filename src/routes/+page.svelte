@@ -7,11 +7,11 @@
   let _ds = [], _ld = true, _er = null;
 
   const _queries = [
-    'lagu trend indonesia 2026',
     'lagu viral tiktok 2026',
     'dj terbaru 2026',
     'lagu sad terbaru 2026',
-    'about you',
+    'hipdut terbaru 2026',
+    'lagu sad viral tiktok 2026',
     'lagu trend tiktok 2026',
   ];
 
