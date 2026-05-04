@@ -7,6 +7,9 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "yt-search": "^2.13.1"
+  },
   "devDependencies": {
     "@sveltejs/adapter-vercel": "^6.0.0",
     "@sveltejs/kit": "^2.0.0",
