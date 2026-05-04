@@ -144,6 +144,7 @@
       _elapsed = Math.floor(_audioEl.currentTime);
       _total = _audioEl.duration && !isNaN(_audioEl.duration) ? Math.floor(_audioEl.duration) : _total;
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
+      _syncSeekEls();
       _updatePositionState();
     }, 1000);
   }
@@ -170,6 +171,14 @@
     _playing.update(v => !v);
   }
 
+  let _seekEl1 = null;
+  let _seekEl2 = null;
+
+  function _syncSeekEls() {
+    if (_seekEl1) _seekEl1.value = _pct;
+    if (_seekEl2) _seekEl2.value = _pct;
+  }
+
   function _onSeekStart() {
     _seeking = true;
   }
@@ -178,6 +187,8 @@
     const val = Number(e.target.value);
     _elapsed = Math.round((val / 100) * _total);
     _pct = val;
+    if (_seekEl1 && e.target !== _seekEl1) _seekEl1.value = val;
+    if (_seekEl2 && e.target !== _seekEl2) _seekEl2.value = val;
   }
   function _onSeekEnd(e) {
     if (!_total || !isFinite(_total)) { _seeking = false; return; }
@@ -186,6 +197,8 @@
     if (_audioEl) _audioEl.currentTime = target;
     _elapsed = target;
     _pct = val;
+    if (_seekEl1) _seekEl1.value = val;
+    if (_seekEl2) _seekEl2.value = val;
     _seeking = false;
   }
 </script>
@@ -284,11 +297,10 @@
       </div>
       <input
         type="range" min="0" max="100" step="0.1"
-        value={_pct}
+        bind:this={_seekEl1}
         on:mousedown={_onSeekStart}
         on:touchstart={_onSeekStart}
         on:input={_onSeekInput}
-        on:change={_onSeekEnd}
         on:mouseup={_onSeekEnd}
         on:touchend={_onSeekEnd}
         class="seek-range"
@@ -347,11 +359,10 @@
           </div>
           <input
             type="range" min="0" max="100" step="0.1"
-            value={_pct}
+            bind:this={_seekEl2}
             on:mousedown={_onSeekStart}
             on:touchstart={_onSeekStart}
             on:input={_onSeekInput}
-            on:change={_onSeekEnd}
             on:mouseup={_onSeekEnd}
             on:touchend={_onSeekEnd}
             class="seek-range"
