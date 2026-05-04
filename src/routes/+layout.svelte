@@ -8,15 +8,16 @@
 
   $: _rt = $page.url.pathname;
 
-  $: if ($_showNP) {
-    tick().then(() => {
-      if (_seekEl2) _seekEl2.value = _pct;
-    });
+  // FIX: Hapus reactive tick() buat seekEl2 — ini yg bikin corrupt state
+  // Sync seekEl2 cukup pas overlay beneran tampil via afterUpdate / manual
+
+  // FIX: Body overflow — pake function biasa biar lebih predictable
+  function _setBodyLock(locked) {
+    if (typeof document === 'undefined') return;
+    document.body.style.overflow = locked ? 'hidden' : '';
   }
 
-  $: if (typeof document !== 'undefined') {
-    document.body.style.overflow = ($_showNP || $_m3v) ? 'hidden' : '';
-  }
+  $: _setBodyLock($_showNP || $_m3v);
 
   function _dur2s(d) {
     if (!d) return 0;
@@ -114,8 +115,7 @@
     _m3v.set(true);
     _audioEl.pause();
     _audioEl.src = '';
-    if (_seekEl1) _seekEl1.value = 0;
-    if (_seekEl2) _seekEl2.value = 0;
+    _syncSeekEls(0);
     const url = await _getStreamUrl(track.videoId);
     _loading = false;
     _m3v.set(false);
@@ -155,7 +155,7 @@
       _elapsed = Math.floor(_audioEl.currentTime);
       _total = _audioEl.duration && !isNaN(_audioEl.duration) ? Math.floor(_audioEl.duration) : _total;
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
-      _syncSeekEls();
+      _syncSeekEls(_pct);
       _updatePositionState();
     }, 1000);
   }
@@ -163,7 +163,7 @@
   onDestroy(() => {
     if (_ticker) clearInterval(_ticker);
     if (_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
-    if (typeof document !== 'undefined') document.body.style.overflow = '';
+    _setBodyLock(false);
   });
 
   function _nxt() {
@@ -182,9 +182,10 @@
   let _seekEl1 = null;
   let _seekEl2 = null;
 
-  function _syncSeekEls() {
-    if (_seekEl1) _seekEl1.value = _pct;
-    if (_seekEl2) _seekEl2.value = _pct;
+  // FIX: Selalu null-check sebelum set value
+  function _syncSeekEls(val) {
+    if (_seekEl1) _seekEl1.value = val;
+    if (_seekEl2) _seekEl2.value = val;
   }
 
   function _onSeekStart() {
@@ -205,9 +206,15 @@
     if (_audioEl) _audioEl.currentTime = target;
     _elapsed = target;
     _pct = val;
-    if (_seekEl1) _seekEl1.value = val;
-    if (_seekEl2) _seekEl2.value = val;
+    _syncSeekEls(val);
     _seeking = false;
+  }
+
+  // FIX: Close NowPlaying — pastiin body unlock & scroll normal balik
+  function _closeNP() {
+    _showNP.set(false);
+    // Paksa body overflow reset setelah DOM update
+    tick().then(() => _setBodyLock(false));
   }
 </script>
 
@@ -321,10 +328,11 @@
 
 {#if $_showNP && $_q8z}
 <div class="overlay-enter" style="position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;
-  background:linear-gradient(180deg,#0e0c05 0%,#0A0A0A 100%);overflow:hidden;overscroll-behavior:none;touch-action:none">
+  background:linear-gradient(180deg,#0e0c05 0%,#0A0A0A 100%);overflow:hidden;overscroll-behavior:contain">
 
   <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0">
-    <button on:click={() => _showNP.set(false)}
+    <!-- FIX: pakai _closeNP() bukan langsung _showNP.set(false) -->
+    <button on:click={_closeNP}
       style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
         background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;color:rgba(255,246,204,.6)">
       <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
@@ -441,7 +449,7 @@
 {#if $_m3v}
 <div style="position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
   background:rgba(8,8,5,.94);backdrop-filter:blur(22px);
-  overscroll-behavior:none;touch-action:none;overflow:hidden">
+  overscroll-behavior:contain;overflow:hidden">
 
   <div style="position:relative;width:96px;height:96px">
     <div style="position:absolute;inset:0;border-radius:50%;
