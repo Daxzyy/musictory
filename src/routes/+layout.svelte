@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { _q8z, _m3v, _p1k, _x9a, _playing, _showNP } from '$lib/store.js';
+  import { _getStreamUrl } from '$lib/api.js';
   import { onDestroy, onMount } from 'svelte';
 
   $: _rt = $page.url.pathname;
@@ -25,59 +26,7 @@
   let _pct = 0;
   let _ticker = null;
   let _prev = null;
-  let _iframeKey = 0;
-  let _iframeEl = null;
-  let _keepAliveAudio = null;
-  let _wakeLock = null;
-  let _swPing = null;
-
-  async function _requestWakeLock() {
-    try {
-      if (_wakeLock) { try { await _wakeLock.release(); } catch(_) {} }
-      if ('wakeLock' in navigator) {
-        _wakeLock = await navigator.wakeLock.request('screen');
-        _wakeLock.addEventListener('release', () => { _wakeLock = null; });
-      }
-    } catch(_) {}
-  }
-
-  function _releaseWakeLock() {
-    if (_wakeLock) {
-      try { _wakeLock.release(); } catch(_) {}
-      _wakeLock = null;
-    }
-  }
-
-  function _startSwPing() {
-    if (_swPing) clearInterval(_swPing);
-    _swPing = setInterval(() => {
-      if (navigator.serviceWorker?.controller) {
-        navigator.serviceWorker.controller.postMessage('keepAlive');
-      }
-    }, 20000);
-  }
-
-  function _stopSwPing() {
-    if (_swPing) { clearInterval(_swPing); _swPing = null; }
-  }
-
-  function _unlockAudio() {
-    if (_keepAliveAudio) {
-      _keepAliveAudio.play().catch(() => {});
-      return;
-    }
-    try {
-      _keepAliveAudio = new Audio('/silence.wav');
-      _keepAliveAudio.loop = true;
-      _keepAliveAudio.volume = 0.001;
-      _keepAliveAudio.play().catch(() => {});
-    } catch(_) {}
-  }
-
-  function _ytMsg(cmd) {
-    if (!_iframeEl) return;
-    _iframeEl.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: cmd, args: [] }), '*');
-  }
+  let _audioEl = null;
 
   function _setMediaSession(track) {
     if (!('mediaSession' in navigator)) return;
@@ -91,27 +40,21 @@
     });
     navigator.mediaSession.setActionHandler('play', () => {
       _playing.set(true);
-      _ytMsg('playVideo');
-      _unlockAudio();
-      _requestWakeLock();
+      _audioEl?.play();
       navigator.mediaSession.playbackState = 'playing';
     });
     navigator.mediaSession.setActionHandler('pause', () => {
       _playing.set(false);
-      _ytMsg('pauseVideo');
-      if (_keepAliveAudio) _keepAliveAudio.pause();
-      _releaseWakeLock();
+      _audioEl?.pause();
       navigator.mediaSession.playbackState = 'paused';
     });
     navigator.mediaSession.setActionHandler('previoustrack', () => _prv());
     navigator.mediaSession.setActionHandler('nexttrack', () => _nxt());
     navigator.mediaSession.setActionHandler('seekbackward', () => {
-      _elapsed = Math.max(0, _elapsed - 10);
-      _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
+      if (_audioEl) _audioEl.currentTime = Math.max(0, _audioEl.currentTime - 10);
     });
     navigator.mediaSession.setActionHandler('seekforward', () => {
-      _elapsed = Math.min(_total, _elapsed + 10);
-      _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
+      if (_audioEl) _audioEl.currentTime = Math.min(_total, _audioEl.currentTime + 10);
     });
     navigator.mediaSession.playbackState = 'playing';
   }
@@ -133,34 +76,28 @@
     _total = _dur2s($_q8z.duration);
     _pct = 0;
     _playing.set(true);
-    _iframeKey++;
-    _unlockAudio();
-    _requestWakeLock();
-    _startSwPing();
-    _keepAliveAudio?.play().then(() => {
-      _setMediaSession($_q8z);
-    }).catch(() => {
-      _setMediaSession($_q8z);
-    });
-    setTimeout(() => {
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-    }, 1500);
+    _loadAndPlay($_q8z);
+  }
+
+  async function _loadAndPlay(track) {
+    if (!_audioEl) return;
+    _audioEl.pause();
+    _audioEl.src = '';
+    const url = await _getStreamUrl(track.videoId);
+    if (!url) return;
+    _audioEl.src = url;
+    _audioEl.play().catch(() => {});
+    _setMediaSession(track);
     _startTick();
   }
 
   $: if (_prev) {
     if ($_playing) {
-      _ytMsg('playVideo');
-      _unlockAudio();
-      _requestWakeLock();
-      _startSwPing();
+      _audioEl?.play();
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       _startTick();
     } else {
-      _ytMsg('pauseVideo');
-      if (_keepAliveAudio) _keepAliveAudio.pause();
-      _releaseWakeLock();
-      _stopSwPing();
+      _audioEl?.pause();
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       if (_ticker) { clearInterval(_ticker); _ticker = null; }
     }
@@ -169,38 +106,17 @@
   function _startTick() {
     if (_ticker) clearInterval(_ticker);
     _ticker = setInterval(() => {
-      if (!$_playing) return;
-      _elapsed = Math.min(_elapsed + 1, _total || 999);
+      if (!$_playing || !_audioEl) return;
+      _elapsed = Math.floor(_audioEl.currentTime);
+      _total = _audioEl.duration && !isNaN(_audioEl.duration) ? Math.floor(_audioEl.duration) : _total;
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
       _updatePositionState();
     }, 1000);
   }
 
-  onMount(() => {
-    document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState === 'visible') {
-        if ($_playing) {
-          _unlockAudio();
-          await _requestWakeLock();
-          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-          _ytMsg('playVideo');
-        }
-      }
-    });
-
-    window.addEventListener('focus', () => {
-      if ($_playing) {
-        _unlockAudio();
-        _ytMsg('playVideo');
-      }
-    });
-  });
-
   onDestroy(() => {
     if (_ticker) clearInterval(_ticker);
-    _stopSwPing();
-    _releaseWakeLock();
-    if (_keepAliveAudio) { _keepAliveAudio.pause(); _keepAliveAudio = null; }
+    if (_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
   });
 
   function _nxt() {
@@ -219,6 +135,14 @@
     _playing.update(v => !v);
   }
 </script>
+
+<audio
+  bind:this={_audioEl}
+  style="display:none"
+  on:ended={_nxt}
+  on:play={() => _playing.set(true)}
+  on:pause={() => _playing.set(false)}
+></audio>
 
 <div style="padding-bottom:{$_q8z ? '11rem' : '4.5rem'}">
   <slot />
@@ -304,17 +228,6 @@
         transition:width 1s linear;min-width:{_pct>0 ? '6px':'0'}"></div>
     </div>
 
-    <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
-      {#key _iframeKey}
-        <iframe
-          bind:this={_iframeEl}
-          src="https://www.youtube.com/embed/{$_q8z.videoId}?autoplay=1&controls=0&rel=0&enablejsapi=1"
-          width="1" height="1" frameborder="0"
-          allow="autoplay; encrypted-media" title="a"
-        ></iframe>
-      {/key}
-    </div>
-
   </div>
 </div>
 {/if}
@@ -371,7 +284,7 @@
     </div>
 
     <div style="display:flex;align-items:center;justify-content:center;gap:20px">
-      <button on:click={() => { _prv(); }}
+      <button on:click={_prv}
         style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
           background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;
           color:rgba(255,246,204,.6);transition:all .15s"
@@ -393,7 +306,7 @@
         {/if}
       </button>
 
-      <button on:click={() => { _nxt(); }}
+      <button on:click={_nxt}
         style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
           background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;
           color:rgba(255,246,204,.6);transition:all .15s"
