@@ -11,7 +11,7 @@
     'lagu viral tiktok 2026',
     'dj terbaru 2026',
     'lagu sad terbaru 2026',
-    'lagu phonk 2026',
+    'lagu galau terbaru 2026',
   ];
 
   function _shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
@@ -167,6 +167,12 @@
         </button>
       {/each}
     </div>
+  {/if}
+
+  {#if !_ld && !_er}
+  <div style="padding:20px 0 24px;text-align:center">
+    <span style="font-size:.62rem;color:rgba(255,215,0,.2);letter-spacing:.12em;font-weight:600">· dibuat dengan ❤️ oleh givy ·</span>
+  </div>
   {/if}
 
 </div>
