@@ -1,28 +1,23 @@
-import crypto from 'crypto';
+import yts from 'yt-search';
 
 export const config = { runtime: 'nodejs20.x' };
 
-const K=Buffer.from('4d7a9c2e1f8b3a6d0e5c9f2b7a4e1d8c','hex');
-const IV=Buffer.from('9998412d5047817f71b13955bded8fe2','hex');
-const W='https://danzymusictory.ganisayudha.workers.dev';
+export async function GET({ url }) {
+  const q = url.searchParams.get('q') || '';
+  if (!q.trim()) return new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
 
-function enc(data){
-  const c=crypto.createCipheriv('aes-128-cbc',K,IV);
-  return Buffer.concat([c.update(data,'utf8'),c.final()]).toString('base64');
-}
-
-export async function GET({url}){
-  const q=url.searchParams.get('q')||'';
-  try{
-    const r=await fetch(`${W}?q=${encodeURIComponent(q)}`);
-    const t=await r.text();
-    if(!t.startsWith('{')){
-      return new Response(JSON.stringify({e:1,m:'upstream error'}),{status:502,headers:{'Content-Type':'application/json'}});
-    }
-    return new Response(JSON.stringify({d:enc(t)}),{
-      headers:{'Content-Type':'application/json'}
-    });
-  }catch(e){
-    return new Response(JSON.stringify({e:1,m:e.message}),{status:500,headers:{'Content-Type':'application/json'}});
+  try {
+    const result = await yts(q);
+    const videos = (result.videos || []).slice(0, 15).map(v => ({
+      title: v.title,
+      thumbnail: v.thumbnail,
+      duration: v.timestamp,
+      views: v.views ? String(v.views) : '',
+      videoId: v.videoId,
+      uploaded: v.ago
+    }));
+    return new Response(JSON.stringify(videos), { headers: { 'Content-Type': 'application/json' } });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }
