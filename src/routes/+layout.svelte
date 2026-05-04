@@ -8,12 +8,6 @@
 
   $: _rt = $page.url.pathname;
 
-  $: if ($_q8z) {
-    tick().then(() => {
-      if (_seekEl1) _seekEl1.value = _pct;
-    });
-  }
-
   $: if ($_showNP) {
     tick().then(() => {
       if (_seekEl2) _seekEl2.value = _pct;
@@ -120,6 +114,8 @@
     _m3v.set(true);
     _audioEl.pause();
     _audioEl.src = '';
+    if (_seekEl1) _seekEl1.value = 0;
+    if (_seekEl2) _seekEl2.value = 0;
     const url = await _getStreamUrl(track.videoId);
     _loading = false;
     _m3v.set(false);
