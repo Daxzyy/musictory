@@ -4,9 +4,13 @@
   import { goto } from '$app/navigation';
   import { _q8z, _m3v, _p1k, _x9a, _playing, _showNP } from '$lib/store.js';
   import { _getStreamUrl } from '$lib/api.js';
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
 
   $: _rt = $page.url.pathname;
+
+  $: if (typeof document !== 'undefined') {
+    document.body.style.overflow = $_showNP ? 'hidden' : '';
+  }
 
   function _dur2s(d) {
     if (!d) return 0;
@@ -87,10 +91,10 @@
     _audioEl.src = '';
     const url = await _getStreamUrl(track.videoId);
     _m3v.set(false);
-    if (!url) { _loading = false; return; }
+    _loading = false;
+    if (!url) return;
     _audioEl.src = url;
     await _audioEl.play().catch(() => {});
-    _loading = false;
     _setMediaSession(track);
     _startTick();
   }
@@ -119,12 +123,8 @@
   onDestroy(() => {
     if (_ticker) clearInterval(_ticker);
     if (_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
-    document.body.style.overflow = '';
+    if (typeof document !== 'undefined') document.body.style.overflow = '';
   });
-
-  $: if (typeof document !== 'undefined') {
-    document.body.style.overflow = $_showNP ? 'hidden' : '';
-  }
 
   function _nxt() {
     const a = $_p1k, b = $_x9a;
@@ -147,8 +147,8 @@
   bind:this={_audioEl}
   style="display:none"
   on:ended={_nxt}
-  on:play={() => _playing.set(true)}
-  on:pause={() => _playing.set(false)}
+  on:play={() => { if (!_loading) _playing.set(true); }}
+  on:pause={() => { if (!_loading) _playing.set(false); }}
 ></audio>
 
 <div style="padding-bottom:{$_q8z ? '11rem' : '4.5rem'}">
