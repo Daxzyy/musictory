@@ -1,11 +1,13 @@
 export const config = { runtime: 'nodejs20.x' };
 
+const W = 'https://danzymusictory.ganisayudha.workers.dev';
+
 export async function GET({ url }) {
   const id = url.searchParams.get('id');
   if (!id) return new Response(JSON.stringify({ error: 'no id' }), { status: 400 });
 
   const ytUrl = `https://www.youtube.com/watch?v=${id}`;
-  const r = await fetch(`https://api.danzy.web.id/api/download/ytmp3?url=${encodeURIComponent(ytUrl)}`);
+  const r = await fetch(`${W}/download?url=${encodeURIComponent(ytUrl)}`);
   const j = await r.json();
 
   if (!j.status || !j.data?.downloadUrl) {
