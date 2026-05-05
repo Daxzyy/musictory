@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { _g9 } from '$lib/api.js';
   import { _q8z, _m3v, _p1k, _x9a } from '$lib/store.js';
 
@@ -56,57 +57,59 @@
 
 <div style="max-width:560px;margin:0 auto;padding:28px 16px 0">
 
-  <!-- BRAND HEADER BARU -->
   <div style="margin-bottom:28px">
 
-    <!-- Logo lockup -->
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
 
-      <!-- Logo mark: vinyl disc icon -->
       <div style="position:relative;width:48px;height:48px;flex-shrink:0">
-        <!-- Outer ring -->
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="24" cy="24" r="22" stroke="#FFD700" stroke-width="2" fill="rgba(255,215,0,0.06)"/>
           <circle cx="24" cy="24" r="15" stroke="rgba(255,215,0,0.35)" stroke-width="1" fill="none"/>
           <circle cx="24" cy="24" r="8" fill="rgba(255,215,0,0.12)" stroke="rgba(255,215,0,0.5)" stroke-width="1"/>
-          <!-- groove lines -->
           <circle cx="24" cy="24" r="19" stroke="rgba(255,215,0,0.15)" stroke-width="0.75" fill="none"/>
           <circle cx="24" cy="24" r="17" stroke="rgba(255,215,0,0.12)" stroke-width="0.75" fill="none"/>
           <circle cx="24" cy="24" r="12" stroke="rgba(255,215,0,0.2)" stroke-width="0.75" fill="none"/>
           <circle cx="24" cy="24" r="10" stroke="rgba(255,215,0,0.15)" stroke-width="0.75" fill="none"/>
-          <!-- center hole -->
           <circle cx="24" cy="24" r="2.5" fill="#FFD700"/>
-          <!-- needle arm hint -->
           <line x1="36" y1="12" x2="28" y2="20" stroke="#FFD700" stroke-width="1.5" stroke-linecap="round"/>
           <circle cx="36" cy="12" r="1.5" fill="#FFD700"/>
         </svg>
       </div>
 
-      <!-- Wordmark -->
-      <div>
+      <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:baseline;gap:0px;line-height:1">
-          <!-- MUSIC in gold, heavy -->
           <span style="font-size:1.75rem;font-weight:700;color:#FFD700;letter-spacing:-.02em;font-family:'Quicksand',sans-serif">music</span>
-          <!-- TORY in muted warm white -->
           <span style="font-size:1.75rem;font-weight:400;color:rgba(255,246,204,0.75);letter-spacing:-.02em;font-family:'Quicksand',sans-serif">tory</span>
         </div>
-        <!-- tagline pill -->
         <div style="margin-top:5px;display:inline-flex;align-items:center;gap:5px;
           background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.2);
           border-radius:99px;padding:2px 10px">
           <span style="font-size:.6rem;font-weight:700;color:#FFD700;letter-spacing:.12em;text-transform:uppercase">Your music, your story</span>
         </div>
       </div>
+
+      <button
+        on:click={() => goto('/search')}
+        style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.15);
+          cursor:pointer;color:rgba(255,215,0,0.7);flex-shrink:0;transition:all .15s"
+        onmouseenter="this.style.background='rgba(255,215,0,0.18)';this.style.color='#FFD700';this.style.borderColor='rgba(255,215,0,0.4)'"
+        onmouseleave="this.style.background='rgba(255,215,0,0.07)';this.style.color='rgba(255,215,0,0.7)';this.style.borderColor='rgba(255,215,0,0.15)'"
+        aria-label="Cari lagu"
+      >
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+      </button>
+
     </div>
 
-    <!-- Section label -->
     <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
       <div style="height:1px;width:16px;background:rgba(255,215,0,0.3);border-radius:99px"></div>
       <span style="font-size:.7rem;font-weight:600;color:rgba(255,215,0,0.55);letter-spacing:.08em">Lagu Trending 2026 🔥</span>
     </div>
 
   </div>
-  <!-- END BRAND HEADER -->
 
   {#if _ld}
     <div style="display:flex;flex-direction:column;gap:10px">
