@@ -60,7 +60,7 @@ export async function GET({ url, request }) {
   }
 
   try {
-    const musicQuery = `${q} lagu audio`;
+    const musicQuery = `${q} official audio`;
     const result = await yts(musicQuery);
     const videos = (result.videos || [])
       .filter(isMusicVideo)
