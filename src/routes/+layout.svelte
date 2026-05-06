@@ -2,7 +2,7 @@
   import '../app.css';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { _q8z, _m3v, _p1k, _x9a, _playing, _showNP } from '$lib/store.js';
+  import { _q8z, _p1k, _x9a, _playing, _showNP } from '$lib/store.js';
   import { _getStreamUrl } from '$lib/api.js';
   import { onDestroy, onMount, tick } from 'svelte';
 
@@ -13,7 +13,7 @@
     document.body.style.overflow = locked ? 'hidden' : '';
   }
 
-  $: _setBodyLock($_showNP || $_m3v);
+  $: _setBodyLock($_showNP);
 
   function _dur2s(d) {
     if (!d) return 0;
@@ -62,17 +62,13 @@
   function _onPlayerTouchMove(e) {
     if (!_isSwiping) return;
     const dy = e.touches[0].clientY - _swipeStartY;
-    const dx = Math.abs(e.touches[0].clientX - (e.touches[0].clientX));
-
     if (!_swipeLocked) {
       if (Math.abs(dy) < 5) return;
       if (dy <= 0) { _isSwiping = false; return; }
       _swipeLocked = true;
     }
-
     e.preventDefault();
     _swipeDeltaY = dy;
-
     if (_swipeDeltaY > 0 && _playerEl) {
       _playerEl.style.transition = 'none';
       _playerEl.style.transform = `translateY(${Math.min(_swipeDeltaY * 0.7, 90)}px)`;
@@ -172,13 +168,11 @@
     await tick();
     if (!_audioEl) return;
     _loading = true;
-    _m3v.set(true);
     _audioEl.pause();
     _audioEl.src = '';
     _syncSeekEls(0);
     const url = await _getStreamUrl(track.videoId);
     _loading = false;
-    _m3v.set(false);
     if (!url) return;
     _audioEl.src = url;
     _audioEl.load();
@@ -323,32 +317,45 @@
         style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
 
         <div style="position:relative;flex-shrink:0;width:46px;height:46px">
-          <img src={$_q8z.thumbnail} alt=""
-            style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;
-              border:2px solid rgba(255,215,0,.3)" />
-          <div style="position:absolute;inset:-4px;border-radius:50%;
-            border:2px solid transparent;
-            border-top-color:#FFD700;border-right-color:rgba(255,215,0,.25);
-            animation:_ring 1.8s linear infinite;
-            animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-            width:8px;height:8px;border-radius:50%;background:#181818;
-            border:1.5px solid rgba(255,215,0,.4)"></div>
+          {#if _loading}
+            <img src={$_q8z.thumbnail} alt=""
+              style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;
+                border:2px solid rgba(255,215,0,.15);opacity:.5" />
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+              <div class="player-spin"></div>
+            </div>
+          {:else}
+            <img src={$_q8z.thumbnail} alt=""
+              style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;
+                border:2px solid rgba(255,215,0,.3)" />
+            <div style="position:absolute;inset:-4px;border-radius:50%;
+              border:2px solid transparent;
+              border-top-color:#FFD700;border-right-color:rgba(255,215,0,.25);
+              animation:_ring 1.8s linear infinite;
+              animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+              width:8px;height:8px;border-radius:50%;background:#181818;
+              border:1.5px solid rgba(255,215,0,.4)"></div>
+          {/if}
         </div>
 
         <div style="flex:1;min-width:0">
           <p style="font-size:.76rem;font-weight:700;color:#FFD700;
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">{$_q8z.title}</p>
           <div style="display:flex;align-items:center;gap:6px">
-            <div style="display:flex;align-items:flex-end;gap:2px;height:10px">
-              {#each [1,2,3,4] as bar}
-                <div class="eqbar eqbar{bar}" style="width:3px;border-radius:2px;background:#FFD700;
-                  animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
-              {/each}
-            </div>
-            <span style="font-size:.62rem;color:rgba(255,246,204,.35)">
-              {_s2dur(_elapsed)} / {$_q8z.duration}
-            </span>
+            {#if _loading}
+              <span style="font-size:.62rem;color:rgba(255,246,204,.4)">Memuat...</span>
+            {:else}
+              <div style="display:flex;align-items:flex-end;gap:2px;height:10px">
+                {#each [1,2,3,4] as bar}
+                  <div class="eqbar eqbar{bar}" style="width:3px;border-radius:2px;background:#FFD700;
+                    animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+                {/each}
+              </div>
+              <span style="font-size:.62rem;color:rgba(255,246,204,.35)">
+                {_s2dur(_elapsed)} / {$_q8z.duration}
+              </span>
+            {/if}
           </div>
         </div>
       </button>
@@ -369,7 +376,9 @@
             color:#141414;transition:all .15s;box-shadow:0 0 14px rgba(255,215,0,.3)"
           onmouseenter="this.style.transform='scale(1.08)'"
           onmouseleave="this.style.transform='scale(1)'">
-          {#if $_playing}
+          {#if _loading}
+            <div class="btn-spin"></div>
+          {:else if $_playing}
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
           {:else}
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -426,26 +435,39 @@
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;gap:32px;overflow:hidden">
 
     <div style="position:relative;width:240px;height:240px">
-      <img src={$_q8z.thumbnail} alt=""
-        style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;
-          border:3px solid rgba(255,215,0,.2);
-          animation:_spin 8s linear infinite;
-          animation-play-state:{$_playing ? 'running' : 'paused'}" />
-      <div style="position:absolute;inset:-8px;border-radius:50%;
-        border:2px solid transparent;
-        border-top-color:#FFD700;border-right-color:rgba(255,215,0,.2);
-        animation:_ring 2.5s linear infinite;
-        animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-        width:16px;height:16px;border-radius:50%;background:#141414;
-        border:2px solid rgba(255,215,0,.4)"></div>
+      {#if _loading}
+        <img src={$_q8z.thumbnail} alt=""
+          style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;
+            border:3px solid rgba(255,215,0,.1);opacity:.4" />
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+          <div class="np-spin"></div>
+        </div>
+      {:else}
+        <img src={$_q8z.thumbnail} alt=""
+          style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;
+            border:3px solid rgba(255,215,0,.2);
+            animation:_spin 8s linear infinite;
+            animation-play-state:{$_playing ? 'running' : 'paused'}" />
+        <div style="position:absolute;inset:-8px;border-radius:50%;
+          border:2px solid transparent;
+          border-top-color:#FFD700;border-right-color:rgba(255,215,0,.2);
+          animation:_ring 2.5s linear infinite;
+          animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+          width:16px;height:16px;border-radius:50%;background:#141414;
+          border:2px solid rgba(255,215,0,.4)"></div>
+      {/if}
     </div>
 
     <div style="text-align:center;width:100%">
       <p style="font-size:1rem;font-weight:700;color:#FFF6CC;line-height:1.4;
         display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
         margin-bottom:6px">{$_q8z.title}</p>
-      <p style="font-size:.72rem;color:rgba(255,215,0,.4)">{$_q8z.duration}</p>
+      {#if _loading}
+        <p style="font-size:.72rem;color:rgba(255,215,0,.5)">Memuat audio...</p>
+      {:else}
+        <p style="font-size:.72rem;color:rgba(255,215,0,.4)">{$_q8z.duration}</p>
+      {/if}
     </div>
 
     <div style="width:100%">
@@ -488,7 +510,9 @@
           color:#141414;transition:all .18s;box-shadow:0 0 28px rgba(255,215,0,.35)"
         onmouseenter="this.style.transform='scale(1.07)'"
         onmouseleave="this.style.transform='scale(1)'">
-        {#if $_playing}
+        {#if _loading}
+          <div class="btn-spin-lg"></div>
+        {:else if $_playing}
           <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         {:else}
           <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -529,46 +553,46 @@
   </div>
 </nav>
 
-{#if $_m3v}
-<div style="position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
-  background:rgba(18,18,18,.94);backdrop-filter:blur(22px);
-  overscroll-behavior:contain;overflow:hidden">
-
-  <div style="position:relative;width:96px;height:96px">
-    <div style="position:absolute;inset:0;border-radius:50%;
-      border:2px solid rgba(255,215,0,.1);border-top-color:rgba(255,215,0,.55);
-      animation:_sp 2s linear infinite"></div>
-    <div style="position:absolute;inset:7px;border-radius:50%;
-      background:#1a1a1a;
-      border:1.5px solid rgba(255,215,0,.14)"></div>
-    <div style="position:absolute;inset:20px;border-radius:50%;
-      background:rgba(255,215,0,.07);
-      border:1px solid rgba(255,215,0,.18);
-      animation:_pl 1.8s ease-in-out infinite"></div>
-    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-      width:11px;height:11px;border-radius:50%;background:#181818;
-      border:1.5px solid rgba(255,215,0,.32)"></div>
-    <div style="position:absolute;inset:-11px;border-radius:50%;
-      border:1.5px solid transparent;border-top-color:#FFD700;border-right-color:rgba(255,215,0,.12);
-      animation:_sp 1.4s linear infinite reverse"></div>
-  </div>
-
-  <div style="display:flex;align-items:flex-end;gap:4px;height:32px">
-    {#each [1,2,3,4,5] as bar}
-      <div class="eqbar-lg eqbar-lg{bar}" style="width:5px;border-radius:3px;background:#FFD700;opacity:.8"></div>
-    {/each}
-  </div>
-
-  <p style="color:rgba(255,246,204,.6);font-size:.82rem;line-height:1.7;font-weight:400;text-align:center;max-width:220px">sabar yaa, server kami butuh waktu untuk merespon🥰</p>
-
-</div>
-{/if}
-
 <style>
   @keyframes _sp   { to { transform: rotate(360deg); } }
-  @keyframes _pl   { 0%,100%{opacity:.4;transform:scale(.95)} 50%{opacity:.9;transform:scale(1.05)} }
   @keyframes _ring { to { transform: rotate(360deg); } }
   @keyframes _spin { to { transform: rotate(360deg); } }
+
+  .player-spin {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(255,215,0,.15);
+    border-top-color: #FFD700;
+    animation: _sp .7s linear infinite;
+  }
+
+  .np-spin {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,215,0,.15);
+    border-top-color: #FFD700;
+    animation: _sp .8s linear infinite;
+  }
+
+  .btn-spin {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(20,20,20,.3);
+    border-top-color: #141414;
+    animation: _sp .6s linear infinite;
+  }
+
+  .btn-spin-lg {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(20,20,20,.3);
+    border-top-color: #141414;
+    animation: _sp .6s linear infinite;
+  }
 
   .eqbar { height: 3px; transition: height .1s; }
   .eqbar1 { animation: _eq1 .5s ease-in-out infinite alternate; }
@@ -580,19 +604,6 @@
   @keyframes _eq2 { from{height:5px} to{height:10px} }
   @keyframes _eq3 { from{height:3px} to{height:8px}  }
   @keyframes _eq4 { from{height:7px} to{height:4px}  }
-
-  .eqbar-lg { height: 4px; }
-  .eqbar-lg1 { animation: _eql1 .45s ease-in-out infinite alternate; }
-  .eqbar-lg2 { animation: _eql2 .65s ease-in-out infinite alternate; }
-  .eqbar-lg3 { animation: _eql3 .55s ease-in-out infinite alternate; }
-  .eqbar-lg4 { animation: _eql4 .38s ease-in-out infinite alternate; }
-  .eqbar-lg5 { animation: _eql5 .72s ease-in-out infinite alternate; }
-
-  @keyframes _eql1 { from{height:4px} to{height:22px} }
-  @keyframes _eql2 { from{height:8px} to{height:26px} }
-  @keyframes _eql3 { from{height:14px} to{height:28px} }
-  @keyframes _eql4 { from{height:6px} to{height:20px} }
-  @keyframes _eql5 { from{height:10px} to{height:24px} }
 
   .seek-range {
     -webkit-appearance: none;
