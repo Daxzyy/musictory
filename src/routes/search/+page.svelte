@@ -1,6 +1,7 @@
 <script>
   import { _g9 } from '$lib/api.js';
-  import { _q8z, _p1k, _x9a, _searchQuery, _searchResults } from '$lib/store.js';
+  import { _q8z, _p1k, _x9a, _searchQuery, _searchResults, _showMenu, _playlists } from '$lib/store.js';
+  import { getPlaylists } from '$lib/playlist.js';
 
   let _ld = false, _t = null, _init = false;
   let _loadingId = null;
@@ -61,6 +62,12 @@
     _x9a.set(idx);
     _q8z.set(item);
     setTimeout(() => { _loadingId = null; }, 3000);
+  }
+
+  function _openMenu(e, item) {
+    e.stopPropagation();
+    _playlists.set(getPlaylists());
+    _showMenu.set(item);
   }
 </script>
 
@@ -126,34 +133,45 @@
   {:else}
     <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:16px">
       {#each _ds as item, i}
-        <button on:click={() => _pl(item, i)}
-          class="glass-card"
-          style="border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;text-align:left;width:100%;cursor:pointer;
-            {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,215,0,.38);box-shadow:0 0 18px rgba(255,215,0,.13)' : ''}"
-        >
-          <div style="position:relative;flex-shrink:0">
-            <img src={item.thumbnail} alt={item.title}
-              style="width:72px;height:72px;border-radius:8px;object-fit:cover;display:block" loading="lazy" />
-            {#if _loadingId === item.videoId}
-              <div style="position:absolute;inset:0;border-radius:8px;background:rgba(10,10,10,.7);display:flex;align-items:center;justify-content:center">
-                <div class="mini-spin"></div>
-              </div>
-            {/if}
-          </div>
-          <div style="flex:1;min-width:0">
-            <p style="font-size:.84rem;font-weight:700;line-height:1.35;
-              display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-              color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:4px">
-              {item.title}
-            </p>
-            {#if item.author}
-              <p style="font-size:.72rem;font-weight:500;color:rgba(255,255,255,.4);margin:0;
-                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                {item.author}
+        <div class="glass-card"
+          style="border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;
+            {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,215,0,.38);box-shadow:0 0 18px rgba(255,215,0,.13)' : ''}">
+
+          <button on:click={() => _pl(item, i)}
+            style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
+            <div style="position:relative;flex-shrink:0">
+              <img src={item.thumbnail} alt={item.title}
+                style="width:72px;height:72px;border-radius:8px;object-fit:cover;display:block" loading="lazy" />
+              {#if _loadingId === item.videoId}
+                <div style="position:absolute;inset:0;border-radius:8px;background:rgba(10,10,10,.7);display:flex;align-items:center;justify-content:center">
+                  <div class="mini-spin"></div>
+                </div>
+              {/if}
+            </div>
+            <div style="flex:1;min-width:0">
+              <p style="font-size:.84rem;font-weight:700;line-height:1.35;
+                display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+                color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:4px">
+                {item.title}
               </p>
-            {/if}
-          </div>
-        </button>
+              {#if item.author}
+                <p style="font-size:.72rem;font-weight:500;color:rgba(255,255,255,.4);margin:0;
+                  white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  {item.author}
+                </p>
+              {/if}
+            </div>
+          </button>
+
+          <button on:click={e => _openMenu(e, item)}
+            style="width:32px;height:32px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
+              background:transparent;border:none;cursor:pointer;color:rgba(255,246,204,.3);transition:all .15s"
+            onmouseenter="this.style.background='rgba(255,215,0,.1)';this.style.color='rgba(255,215,0,.7)'"
+            onmouseleave="this.style.background='transparent';this.style.color='rgba(255,246,204,.3)'">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          </button>
+
+        </div>
       {/each}
     </div>
   {/if}
