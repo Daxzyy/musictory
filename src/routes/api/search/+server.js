@@ -71,7 +71,8 @@ export async function GET({ url, request }) {
         duration: v.timestamp,
         views: v.views ? String(v.views) : '',
         videoId: v.videoId,
-        uploaded: v.ago
+        uploaded: v.ago,
+        author: v.author?.name || ''
       }));
     const payload = encrypt(videos);
     return new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } });
