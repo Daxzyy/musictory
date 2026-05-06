@@ -1,8 +1,9 @@
 <script>
   import { _g9 } from '$lib/api.js';
-  import { _q8z, _m3v, _p1k, _x9a, _searchQuery, _searchResults } from '$lib/store.js';
+  import { _q8z, _p1k, _x9a, _searchQuery, _searchResults } from '$lib/store.js';
 
   let _ld = false, _t = null, _init = false;
+  let _loadingId = null;
 
   let _qv = '';
   let _ds = [];
@@ -54,11 +55,12 @@
     _init = false;
   }
 
-  function _pl(item, idx) {
-    _m3v.set(true);
+  async function _pl(item, idx) {
+    _loadingId = item.videoId;
     _p1k.set(_ds);
     _x9a.set(idx);
     _q8z.set(item);
+    setTimeout(() => { _loadingId = null; }, 3000);
   }
 
   function _fmt(v) {
@@ -67,6 +69,20 @@
     if (n >= 1e6) return (n / 1e6).toFixed(1) + 'Jt views';
     if (n >= 1e3) return (n / 1e3).toFixed(1) + 'Rb views';
     return n + ' views';
+  }
+
+  function _extractArtist(title) {
+    if (!title) return '';
+    const sep = title.match(/^(.+?)\s*[-–—|]\s*(.+)$/);
+    if (sep) return sep[1].trim();
+    return '';
+  }
+
+  function _cleanTitle(title) {
+    if (!title) return title;
+    const sep = title.match(/^(.+?)\s*[-–—|]\s*(.+)$/);
+    if (sep) return sep[2].trim();
+    return title;
   }
 </script>
 
@@ -107,7 +123,7 @@
     <div style="display:flex;flex-direction:column;gap:10px">
       {#each Array(5) as _}
         <div class="glass-card" style="border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center">
-          <div class="skeleton" style="width:72px;height:72px;border-radius:12px;flex-shrink:0"></div>
+          <div class="skeleton" style="width:72px;height:72px;border-radius:8px;flex-shrink:0"></div>
           <div style="flex:1;display:flex;flex-direction:column;gap:8px">
             <div class="skeleton" style="height:11px;width:72%;border-radius:6px"></div>
             <div class="skeleton" style="height:9px;width:48%;border-radius:6px"></div>
@@ -139,19 +155,32 @@
         >
           <div style="position:relative;flex-shrink:0">
             <img src={item.thumbnail} alt={item.title}
-              style="width:72px;height:72px;border-radius:12px;object-fit:cover;display:block" loading="lazy" />
+              style="width:72px;height:72px;border-radius:8px;object-fit:cover;display:block" loading="lazy" />
+            {#if _loadingId === item.videoId}
+              <div style="position:absolute;inset:0;border-radius:8px;background:rgba(10,10,10,.7);display:flex;align-items:center;justify-content:center">
+                <div class="mini-spin"></div>
+              </div>
+            {/if}
           </div>
           <div style="flex:1;min-width:0">
-            <p style="font-size:.82rem;font-weight:600;line-height:1.35;
+            <p style="font-size:.84rem;font-weight:700;line-height:1.35;
               display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-              color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:6px">{item.title}</p>
+              color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:4px">
+              {_cleanTitle(item.title) || item.title}
+            </p>
+            {#if _extractArtist(item.title)}
+              <p style="font-size:.72rem;font-weight:600;color:rgba(255,215,0,.7);margin:0 0 5px;
+                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {_extractArtist(item.title)}
+              </p>
+            {/if}
             <div style="display:flex;flex-wrap:wrap;gap:5px 12px;align-items:center">
-              <span style="display:flex;align-items:center;gap:3px;color:rgba(255,215,0,.75);font-size:.68rem">
+              <span style="display:flex;align-items:center;gap:3px;color:rgba(255,246,204,.4);font-size:.67rem">
                 <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
                 {item.duration}
               </span>
               {#if item.views}
-                <span style="color:rgba(255,246,204,.38);font-size:.68rem">{_fmt(item.views)}</span>
+                <span style="color:rgba(255,246,204,.3);font-size:.67rem">{_fmt(item.views)}</span>
               {/if}
             </div>
           </div>
@@ -161,3 +190,15 @@
   {/if}
 
 </div>
+
+<style>
+  .mini-spin {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(255,215,0,.2);
+    border-top-color: #FFD700;
+    animation: _mspin .7s linear infinite;
+  }
+  @keyframes _mspin { to { transform: rotate(360deg); } }
+</style>
