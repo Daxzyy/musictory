@@ -8,3 +8,7 @@ export const _playing = writable(false);
 export const _showNP = writable(false);
 export const _searchQuery = writable('');
 export const _searchResults = writable([]);
+export const _showMenu = writable(null);
+export const _showAddPl = writable(null);
+export const _playlists = writable([]);
+export const _recentlyPlayed = writable([]);
