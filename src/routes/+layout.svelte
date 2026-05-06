@@ -2,8 +2,9 @@
   import '../app.css';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { _q8z, _p1k, _x9a, _playing, _showNP } from '$lib/store.js';
+  import { _q8z, _p1k, _x9a, _playing, _showNP, _showMenu, _showAddPl, _playlists, _recentlyPlayed } from '$lib/store.js';
   import { _getStreamUrl } from '$lib/api.js';
+  import { addRecentlyPlayed, getPlaylists, addTrackToPlaylist, createPlaylist } from '$lib/playlist.js';
   import { onDestroy, onMount, tick } from 'svelte';
 
   $: _rt = $page.url.pathname;
@@ -44,20 +45,61 @@
   let _isSwiping = false;
   let _swipeLocked = false;
   let _playerEl = null;
+  let _swipeHoriz = false;
+
+  let _newPlName = '';
+  let _showNewPlInSheet = false;
+  let _addFeedback = '';
+  let _feedbackTimer = null;
+
+  function _showFeedback(msg) {
+    _addFeedback = msg;
+    if (_feedbackTimer) clearTimeout(_feedbackTimer);
+    _feedbackTimer = setTimeout(() => { _addFeedback = ''; }, 2000);
+  }
+
+  function _openMenuSheet(item) {
+    _playlists.set(getPlaylists());
+    _showMenu.set(item);
+    _showNewPlInSheet = false;
+    _newPlName = '';
+  }
+
+  function _closeMenuSheet() {
+    _showMenu.set(null);
+    _showNewPlInSheet = false;
+    _newPlName = '';
+  }
+
+  function _doAddToPl(pl) {
+    const track = $_showMenu;
+    if (!track) return;
+    const ok = addTrackToPlaylist(pl.id, track);
+    _playlists.set(getPlaylists());
+    _showFeedback(ok ? `Ditambahkan ke "${pl.name}"` : `Sudah ada di "${pl.name}"`);
+    _closeMenuSheet();
+  }
+
+  function _doCreateAndAdd() {
+    if (!_newPlName.trim()) return;
+    const pl = createPlaylist(_newPlName.trim());
+    addTrackToPlaylist(pl.id, $_showMenu);
+    _playlists.set(getPlaylists());
+    _showFeedback(`Ditambahkan ke "${pl.name}"`);
+    _newPlName = '';
+    _showNewPlInSheet = false;
+    _closeMenuSheet();
+  }
 
   function _onPlayerTouchStart(e) {
     const seekEls = _playerEl ? _playerEl.querySelectorAll('.seek-range') : [];
-    for (const el of seekEls) {
-      if (el.contains(e.target)) return;
-    }
+    for (const el of seekEls) { if (el.contains(e.target)) return; }
     _swipeStartY = e.touches[0].clientY;
     _swipeDeltaY = 0;
     _isSwiping = true;
     _swipeHoriz = false;
     _swipeLocked = false;
   }
-
-  let _swipeHoriz = false;
 
   function _onPlayerTouchMove(e) {
     if (!_isSwiping) return;
@@ -86,9 +128,7 @@
         _playerEl.style.transform = 'translateY(120px)';
         _playerEl.style.opacity = '0';
         setTimeout(() => _closeTrack(), 180);
-      } else {
-        _closeTrack();
-      }
+      } else { _closeTrack(); }
     } else {
       if (_playerEl) {
         _playerEl.style.transition = 'transform .2s ease, opacity .2s ease';
@@ -133,11 +173,7 @@
   function _updatePositionState() {
     if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
     try {
-      navigator.mediaSession.setPositionState({
-        duration: _total || 0,
-        playbackRate: 1,
-        position: _elapsed
-      });
+      navigator.mediaSession.setPositionState({ duration: _total || 0, playbackRate: 1, position: _elapsed });
     } catch(_) {}
   }
 
@@ -145,6 +181,7 @@
 
   onMount(() => {
     _mounted = true;
+    _playlists.set(getPlaylists());
     if ($_q8z && $_q8z !== _prev) {
       _prev = $_q8z;
       _elapsed = 0;
@@ -162,6 +199,10 @@
     _pct = 0;
     _playing.set(true);
     _loadAndPlay($_q8z);
+    addRecentlyPlayed($_q8z);
+    _recentlyPlayed.set(
+      (() => { try { return JSON.parse(localStorage.getItem('_msc_rp') || '[]'); } catch { return []; } })()
+    );
   }
 
   async function _loadAndPlay(track) {
@@ -217,6 +258,7 @@
   onDestroy(() => {
     if (_ticker) clearInterval(_ticker);
     if (_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
+    if (_feedbackTimer) clearTimeout(_feedbackTimer);
     _setBodyLock(false);
   });
 
@@ -273,9 +315,7 @@
 
   function _openNP() {
     _showNP.set(true);
-    requestAnimationFrame(() => {
-      if (_seekEl2) _seekEl2.value = _pct;
-    });
+    requestAnimationFrame(() => { if (_seekEl2) _seekEl2.value = _pct; });
   }
 
   function _closeNP() {
@@ -296,6 +336,16 @@
   <slot />
 </div>
 
+{#if _addFeedback}
+  <div style="position:fixed;bottom:{$_q8z ? '185px' : '80px'};left:50%;transform:translateX(-50%);z-index:200;
+    background:#1c1c1c;border:1px solid rgba(255,215,0,.3);border-radius:99px;
+    padding:10px 20px;font-size:.78rem;font-weight:700;color:#FFD700;
+    white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.4);
+    animation:_fadeIn .2s ease">
+    {_addFeedback}
+  </div>
+{/if}
+
 {#if $_q8z}
 <div
   bind:this={_playerEl}
@@ -310,54 +360,45 @@
   </div>
 
   <div style="max-width:560px;margin:0 auto">
-
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;position:relative;z-index:2">
 
       <button on:click={() => _openNP()}
         style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
-
         <div style="position:relative;flex-shrink:0;width:46px;height:46px">
           {#if _loading}
-            <img src={$_q8z.thumbnail} alt=""
-              style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;
-                border:2px solid rgba(255,215,0,.15);opacity:.5" />
+            <img src={$_q8z.thumbnail} alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.15);opacity:.5" />
             <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
               <div class="player-spin"></div>
             </div>
           {:else}
-            <img src={$_q8z.thumbnail} alt=""
-              style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;
-                border:2px solid rgba(255,215,0,.3)" />
-            <div style="position:absolute;inset:-4px;border-radius:50%;
-              border:2px solid transparent;
-              border-top-color:#FFD700;border-right-color:rgba(255,215,0,.25);
-              animation:_ring 1.8s linear infinite;
-              animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-              width:8px;height:8px;border-radius:50%;background:#181818;
-              border:1.5px solid rgba(255,215,0,.4)"></div>
+            <img src={$_q8z.thumbnail} alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.3)" />
+            <div style="position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;border-top-color:#FFD700;border-right-color:rgba(255,215,0,.25);animation:_ring 1.8s linear infinite;animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#181818;border:1.5px solid rgba(255,215,0,.4)"></div>
           {/if}
         </div>
-
         <div style="flex:1;min-width:0">
-          <p style="font-size:.76rem;font-weight:700;color:#FFD700;
-            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">{$_q8z.title}</p>
+          <p style="font-size:.76rem;font-weight:700;color:#FFD700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">{$_q8z.title}</p>
           <div style="display:flex;align-items:center;gap:6px">
             {#if _loading}
               <span style="font-size:.62rem;color:rgba(255,246,204,.4)">Memuat...</span>
             {:else}
               <div style="display:flex;align-items:flex-end;gap:2px;height:10px">
                 {#each [1,2,3,4] as bar}
-                  <div class="eqbar eqbar{bar}" style="width:3px;border-radius:2px;background:#FFD700;
-                    animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+                  <div class="eqbar eqbar{bar}" style="width:3px;border-radius:2px;background:#FFD700;animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
                 {/each}
               </div>
-              <span style="font-size:.62rem;color:rgba(255,246,204,.35)">
-                {_s2dur(_elapsed)} / {$_q8z.duration}
-              </span>
+              <span style="font-size:.62rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)} / {$_q8z.duration}</span>
             {/if}
           </div>
         </div>
+      </button>
+
+      <button on:click={() => _openMenuSheet($_q8z)}
+        style="width:32px;height:32px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:transparent;border:none;cursor:pointer;color:rgba(255,246,204,.35);transition:all .15s"
+        onmouseenter="this.style.background='rgba(255,215,0,.1)';this.style.color='rgba(255,215,0,.7)'"
+        onmouseleave="this.style.background='transparent';this.style.color='rgba(255,246,204,.35)'">
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
       </button>
 
       <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
@@ -369,13 +410,11 @@
           onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.color='rgba(255,246,204,.55)'">
           <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
         </button>
-
         <button on:click={_togglePlay}
           style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
             background:linear-gradient(135deg,#FFD700,#FFC300);border:none;cursor:pointer;
             color:#141414;transition:all .15s;box-shadow:0 0 14px rgba(255,215,0,.3)"
-          onmouseenter="this.style.transform='scale(1.08)'"
-          onmouseleave="this.style.transform='scale(1)'">
+          onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform='scale(1)'">
           {#if _loading}
             <div class="btn-spin"></div>
           {:else if $_playing}
@@ -384,7 +423,6 @@
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           {/if}
         </button>
-
         <button on:click={_nxt}
           style="width:33px;height:33px;border-radius:50%;display:flex;align-items:center;justify-content:center;
             background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;
@@ -398,12 +436,9 @@
 
     <div style="position:relative;height:14px;display:flex;align-items:center">
       <div style="position:absolute;left:0;right:0;height:3px;border-radius:99px;background:rgba(255,215,0,.1);pointer-events:none">
-        <div style="height:100%;width:{_pct}%;border-radius:99px;
-          background:linear-gradient(to right,#FFD700,#FFC300);
-          transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '6px':'0'}"></div>
+        <div style="height:100%;width:{_pct}%;border-radius:99px;background:linear-gradient(to right,#FFD700,#FFC300);transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '6px':'0'}"></div>
       </div>
-      <input
-        type="range" min="0" max="100" step="0.1"
+      <input type="range" min="0" max="100" step="0.1"
         bind:this={_seekEl1}
         on:mousedown={_onSeekStart}
         on:touchstart|stopPropagation={_onSeekStart}
@@ -413,7 +448,6 @@
         class="seek-range"
         style="position:absolute;left:0;right:0;width:100%;margin:0;padding:0;touch-action:none;z-index:1" />
     </div>
-
   </div>
 </div>
 {/if}
@@ -429,40 +463,27 @@
       <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
     </button>
     <p style="font-size:.75rem;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.1em">NOW PLAYING</p>
-    <div style="width:38px"></div>
+    <button on:click={() => _openMenuSheet($_q8z)}
+      style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;color:rgba(255,246,204,.5)">
+      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+    </button>
   </div>
 
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;gap:32px;overflow:hidden">
-
     <div style="position:relative;width:240px;height:240px">
       {#if _loading}
-        <img src={$_q8z.thumbnail} alt=""
-          style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;
-            border:3px solid rgba(255,215,0,.1);opacity:.4" />
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-          <div class="np-spin"></div>
-        </div>
+        <img src={$_q8z.thumbnail} alt="" style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;border:3px solid rgba(255,215,0,.1);opacity:.4" />
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div class="np-spin"></div></div>
       {:else}
-        <img src={$_q8z.thumbnail} alt=""
-          style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;
-            border:3px solid rgba(255,215,0,.2);
-            animation:_spin 8s linear infinite;
-            animation-play-state:{$_playing ? 'running' : 'paused'}" />
-        <div style="position:absolute;inset:-8px;border-radius:50%;
-          border:2px solid transparent;
-          border-top-color:#FFD700;border-right-color:rgba(255,215,0,.2);
-          animation:_ring 2.5s linear infinite;
-          animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-          width:16px;height:16px;border-radius:50%;background:#141414;
-          border:2px solid rgba(255,215,0,.4)"></div>
+        <img src={$_q8z.thumbnail} alt="" style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;border:3px solid rgba(255,215,0,.2);animation:_spin 8s linear infinite;animation-play-state:{$_playing ? 'running' : 'paused'}" />
+        <div style="position:absolute;inset:-8px;border-radius:50%;border:2px solid transparent;border-top-color:#FFD700;border-right-color:rgba(255,215,0,.2);animation:_ring 2.5s linear infinite;animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#141414;border:2px solid rgba(255,215,0,.4)"></div>
       {/if}
     </div>
 
     <div style="text-align:center;width:100%">
-      <p style="font-size:1rem;font-weight:700;color:#FFF6CC;line-height:1.4;
-        display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-        margin-bottom:6px">{$_q8z.title}</p>
+      <p style="font-size:1rem;font-weight:700;color:#FFF6CC;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px">{$_q8z.title}</p>
       {#if _loading}
         <p style="font-size:.72rem;color:rgba(255,255,255,.35)">Memuat audio...</p>
       {:else}
@@ -473,12 +494,9 @@
     <div style="width:100%">
       <div style="position:relative;height:18px;display:flex;align-items:center;margin-bottom:8px;cursor:pointer">
         <div style="position:absolute;left:0;right:0;height:4px;border-radius:99px;background:rgba(255,215,0,.1)">
-          <div style="height:100%;width:{_pct}%;border-radius:99px;
-            background:linear-gradient(to right,#FFD700,#FFC300);
-            transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '8px':'0'}"></div>
+          <div style="height:100%;width:{_pct}%;border-radius:99px;background:linear-gradient(to right,#FFD700,#FFC300);transition:width {_seeking ? '0s' : '1s'} linear;min-width:{_pct>0 ? '8px':'0'}"></div>
         </div>
-        <input
-          type="range" min="0" max="100" step="0.1"
+        <input type="range" min="0" max="100" step="0.1"
           bind:this={_seekEl2}
           on:mousedown={_onSeekStart}
           on:touchstart={_onSeekStart}
@@ -503,13 +521,11 @@
         onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.color='rgba(255,246,204,.6)'">
         <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
       </button>
-
       <button on:click={_togglePlay}
         style="width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;
           background:linear-gradient(135deg,#FFD700,#FFC300);border:none;cursor:pointer;
           color:#141414;transition:all .18s;box-shadow:0 0 28px rgba(255,215,0,.35)"
-        onmouseenter="this.style.transform='scale(1.07)'"
-        onmouseleave="this.style.transform='scale(1)'">
+        onmouseenter="this.style.transform='scale(1.07)'" onmouseleave="this.style.transform='scale(1)'">
         {#if _loading}
           <div class="btn-spin-lg"></div>
         {:else if $_playing}
@@ -518,7 +534,6 @@
           <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         {/if}
       </button>
-
       <button on:click={_nxt}
         style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
           background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;
@@ -528,10 +543,98 @@
         <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6h2v12h-2zm-3.5 6L4 6v12z"/></svg>
       </button>
     </div>
-
   </div>
-
 </div>
+{/if}
+
+{#if $_showMenu}
+  <div style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center"
+    on:click={_closeMenuSheet}>
+    <div style="width:100%;max-width:560px;background:#1c1c1c;border-radius:24px 24px 0 0;
+      padding:0 0 40px;border-top:1px solid rgba(255,215,0,.15);max-height:75vh;overflow-y:auto"
+      on:click|stopPropagation>
+
+      <div style="padding:16px 20px 14px;display:flex;gap:12px;align-items:center;border-bottom:1px solid rgba(255,215,0,.08)">
+        <div style="width:36px;height:4px;border-radius:99px;background:rgba(255,215,0,.2);position:absolute;top:16px;left:50%;transform:translateX(-50%)"></div>
+        <img src={$_showMenu.thumbnail} alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;margin-top:8px" />
+        <div style="flex:1;min-width:0;margin-top:8px">
+          <p style="font-size:.8rem;font-weight:700;color:#FFF6CC;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{$_showMenu.title}</p>
+          {#if $_showMenu.author}
+            <p style="font-size:.7rem;color:rgba(255,246,204,.4);margin:4px 0 0">{$_showMenu.author}</p>
+          {/if}
+        </div>
+      </div>
+
+      <div style="padding:14px 20px 0">
+        <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.4);letter-spacing:.1em;margin:0 0 12px">TAMBAH KE PLAYLIST</p>
+
+        {#if !_showNewPlInSheet}
+          <button on:click={() => _showNewPlInSheet = true}
+            style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 0;
+              background:none;border:none;border-bottom:1px solid rgba(255,215,0,.07);cursor:pointer;text-align:left">
+            <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
+              background:rgba(255,215,0,.08);border:1px dashed rgba(255,215,0,.25);
+              display:flex;align-items:center;justify-content:center">
+              <svg width="18" height="18" fill="rgba(255,215,0,.6)" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </div>
+            <span style="font-size:.82rem;font-weight:700;color:rgba(255,215,0,.7)">Buat Playlist Baru</span>
+          </button>
+        {:else}
+          <div style="display:flex;gap:8px;margin-bottom:4px;border-bottom:1px solid rgba(255,215,0,.07);padding-bottom:14px">
+            <input
+              bind:value={_newPlName}
+              on:keydown={e => e.key === 'Enter' && _doCreateAndAdd()}
+              placeholder="Nama playlist baru..."
+              style="flex:1;background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,.2);color:#FFF6CC;
+                font-family:'Quicksand',sans-serif;font-size:.82rem;font-weight:500;
+                border-radius:10px;padding:10px 12px;outline:none"
+              autofocus
+            />
+            <button on:click={_doCreateAndAdd}
+              style="padding:10px 16px;border-radius:10px;background:linear-gradient(135deg,#FFD700,#FFC300);
+                border:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:.78rem;font-weight:700;color:#141414">
+              Buat
+            </button>
+          </div>
+        {/if}
+
+        {#if $_playlists.length === 0 && !_showNewPlInSheet}
+          <p style="font-size:.76rem;color:rgba(255,246,204,.3);text-align:center;padding:16px 0">Belum ada playlist</p>
+        {:else}
+          {#each $_playlists as pl}
+            <button on:click={() => _doAddToPl(pl)}
+              style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 0;
+                background:none;border:none;border-bottom:1px solid rgba(255,215,0,.07);cursor:pointer;text-align:left;transition:opacity .15s"
+              onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'">
+              <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
+                background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.15);
+                overflow:hidden;display:flex;align-items:center;justify-content:center">
+                {#if pl.tracks.length > 0}
+                  <img src={pl.tracks[0].thumbnail} alt="" style="width:100%;height:100%;object-fit:cover" />
+                {:else}
+                  <svg width="18" height="18" fill="rgba(255,215,0,.35)" viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+                {/if}
+              </div>
+              <div style="flex:1;min-width:0">
+                <p style="font-size:.82rem;font-weight:700;color:#FFF6CC;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{pl.name}</p>
+                <p style="font-size:.7rem;color:rgba(255,246,204,.35);margin:4px 0 0">{pl.tracks.length} lagu</p>
+              </div>
+              <svg width="18" height="18" fill="rgba(255,215,0,.3)" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </button>
+          {/each}
+        {/if}
+
+        {#if $_showMenu?._ctx === 'recent'}
+          <button on:click={() => { import('$lib/playlist.js').then(m => { m.removeRecentlyPlayed($_showMenu.videoId); _recentlyPlayed.set(getRecentlyPlayed ? getRecentlyPlayed() : []); }); _closeMenuSheet(); }}
+            style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 0;
+              background:none;border:none;cursor:pointer;text-align:left;margin-top:4px">
+            <svg width="18" height="18" fill="rgba(255,100,100,.6)" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            <span style="font-size:.82rem;font-weight:700;color:rgba(255,100,100,.7)">Hapus dari Riwayat</span>
+          </button>
+        {/if}
+      </div>
+    </div>
+  </div>
 {/if}
 
 <nav class="nav-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:50">
@@ -557,84 +660,28 @@
   @keyframes _sp   { to { transform: rotate(360deg); } }
   @keyframes _ring { to { transform: rotate(360deg); } }
   @keyframes _spin { to { transform: rotate(360deg); } }
+  @keyframes _fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
-  .player-spin {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    border: 2.5px solid rgba(255,215,0,.15);
-    border-top-color: #FFD700;
-    animation: _sp .7s linear infinite;
-  }
+  .player-spin { width:26px;height:26px;border-radius:50%;border:2.5px solid rgba(255,215,0,.15);border-top-color:#FFD700;animation:_sp .7s linear infinite; }
+  .np-spin { width:52px;height:52px;border-radius:50%;border:3px solid rgba(255,215,0,.15);border-top-color:#FFD700;animation:_sp .8s linear infinite; }
+  .btn-spin { width:14px;height:14px;border-radius:50%;border:2px solid rgba(20,20,20,.3);border-top-color:#141414;animation:_sp .6s linear infinite; }
+  .btn-spin-lg { width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(20,20,20,.3);border-top-color:#141414;animation:_sp .6s linear infinite; }
 
-  .np-spin {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    border: 3px solid rgba(255,215,0,.15);
-    border-top-color: #FFD700;
-    animation: _sp .8s linear infinite;
-  }
-
-  .btn-spin {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid rgba(20,20,20,.3);
-    border-top-color: #141414;
-    animation: _sp .6s linear infinite;
-  }
-
-  .btn-spin-lg {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2.5px solid rgba(20,20,20,.3);
-    border-top-color: #141414;
-    animation: _sp .6s linear infinite;
-  }
-
-  .eqbar { height: 3px; transition: height .1s; }
-  .eqbar1 { animation: _eq1 .5s ease-in-out infinite alternate; }
-  .eqbar2 { animation: _eq2 .7s ease-in-out infinite alternate; }
-  .eqbar3 { animation: _eq3 .6s ease-in-out infinite alternate; }
-  .eqbar4 { animation: _eq4 .4s ease-in-out infinite alternate; }
+  .eqbar { height:3px;transition:height .1s; }
+  .eqbar1 { animation:_eq1 .5s ease-in-out infinite alternate; }
+  .eqbar2 { animation:_eq2 .7s ease-in-out infinite alternate; }
+  .eqbar3 { animation:_eq3 .6s ease-in-out infinite alternate; }
+  .eqbar4 { animation:_eq4 .4s ease-in-out infinite alternate; }
 
   @keyframes _eq1 { from{height:2px} to{height:10px} }
   @keyframes _eq2 { from{height:5px} to{height:10px} }
   @keyframes _eq3 { from{height:3px} to{height:8px}  }
   @keyframes _eq4 { from{height:7px} to{height:4px}  }
 
-  .seek-range {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 100%;
-    background: transparent;
-    cursor: pointer;
-    outline: none;
-  }
-  .seek-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 13px;
-    height: 13px;
-    border-radius: 50%;
-    background: #ffffff;
-    border: 2px solid rgba(255,215,0,.6);
-    box-shadow: 0 0 6px rgba(255,215,0,.35);
-    cursor: pointer;
-    transition: transform .12s;
-  }
-  .seek-range::-webkit-slider-thumb:active { transform: scale(1.25); }
-  .seek-range::-moz-range-thumb {
-    width: 13px;
-    height: 13px;
-    border-radius: 50%;
-    background: #ffffff;
-    border: 2px solid rgba(255,215,0,.6);
-    box-shadow: 0 0 6px rgba(255,215,0,.35);
-    cursor: pointer;
-  }
-  .seek-range::-webkit-slider-runnable-track { background: transparent; }
-  .seek-range::-moz-range-track { background: transparent; }
+  .seek-range { -webkit-appearance:none;appearance:none;height:100%;background:transparent;cursor:pointer;outline:none; }
+  .seek-range::-webkit-slider-thumb { -webkit-appearance:none;appearance:none;width:13px;height:13px;border-radius:50%;background:#ffffff;border:2px solid rgba(255,215,0,.6);box-shadow:0 0 6px rgba(255,215,0,.35);cursor:pointer;transition:transform .12s; }
+  .seek-range::-webkit-slider-thumb:active { transform:scale(1.25); }
+  .seek-range::-moz-range-thumb { width:13px;height:13px;border-radius:50%;background:#ffffff;border:2px solid rgba(255,215,0,.6);box-shadow:0 0 6px rgba(255,215,0,.35);cursor:pointer; }
+  .seek-range::-webkit-slider-runnable-track { background:transparent; }
+  .seek-range::-moz-range-track { background:transparent; }
 </style>
