@@ -12,6 +12,16 @@
   let _showRename = false;
   let _renameName = '';
 
+  function focusScroll(node) {
+    function onFocus() {
+      setTimeout(() => {
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 320);
+    }
+    node.addEventListener('focus', onFocus);
+    return { destroy() { node.removeEventListener('focus', onFocus); } };
+  }
+
   onMount(() => {
     _recentlyPlayed.set(getRecentlyPlayed());
     _playlists.set(getPlaylists());
@@ -210,28 +220,32 @@
 </div>
 
 {#if _showNewPl}
-  <div style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center"
+  <div style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px"
     on:click={() => _showNewPl = false}>
-    <div style="width:100%;max-width:560px;background:#1c1c1c;border-radius:24px 24px 0 0;padding:24px 20px 40px;border-top:1px solid rgba(255,215,0,.15)"
+    <div style="width:100%;max-width:400px;background:#1c1c1c;border-radius:20px;padding:24px 20px;border:1px solid rgba(255,215,0,.15)"
       on:click|stopPropagation>
-      <div style="width:36px;height:4px;border-radius:99px;background:rgba(255,215,0,.2);margin:0 auto 20px"></div>
       <p style="font-size:.95rem;font-weight:700;color:#FFD700;margin:0 0 16px">Playlist Baru</p>
       <input
         bind:value={_newPlName}
         on:keydown={e => e.key === 'Enter' && _doCreatePl()}
         placeholder="Nama playlist..."
         style="width:100%;background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,.2);color:#FFF6CC;
-          font-family:'Quicksand',sans-serif;font-size:.875rem;font-weight:500;
+          font-family:'Quicksand',sans-serif;font-size:1rem;font-weight:500;
           border-radius:12px;padding:12px 16px;outline:none;margin-bottom:14px;box-sizing:border-box"
         autofocus
+        use:focusScroll
       />
-      <button on:click={_doCreatePl}
-        style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#FFD700,#FFC300);
-          border:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:.875rem;font-weight:700;color:#141414;
-          transition:opacity .15s"
-        onmouseenter="this.style.opacity='.88'" onmouseleave="this.style.opacity='1'">
-        Buat
-      </button>
+      <div style="display:flex;gap:10px">
+        <button on:click={() => _showNewPl = false}
+          style="flex:1;padding:12px;border-radius:12px;background:rgba(255,215,0,.07);
+            border:1px solid rgba(255,215,0,.15);cursor:pointer;font-family:'Quicksand',sans-serif;
+            font-size:.85rem;font-weight:700;color:rgba(255,246,204,.6)">Batal</button>
+        <button on:click={_doCreatePl}
+          style="flex:1;padding:12px;border-radius:12px;background:linear-gradient(135deg,#FFD700,#FFC300);
+            border:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:.85rem;font-weight:700;color:#141414">
+          Buat
+        </button>
+      </div>
     </div>
   </div>
 {/if}
@@ -323,25 +337,31 @@
 {/if}
 
 {#if _showRename && _openedPlaylist}
-  <div style="position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center"
+  <div style="position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px"
     on:click={() => _showRename = false}>
-    <div style="width:100%;max-width:560px;background:#1c1c1c;border-radius:24px 24px 0 0;padding:24px 20px 40px;border-top:1px solid rgba(255,215,0,.15)"
+    <div style="width:100%;max-width:400px;background:#1c1c1c;border-radius:20px;padding:24px 20px;border:1px solid rgba(255,215,0,.15)"
       on:click|stopPropagation>
-      <div style="width:36px;height:4px;border-radius:99px;background:rgba(255,215,0,.2);margin:0 auto 20px"></div>
       <p style="font-size:.95rem;font-weight:700;color:#FFD700;margin:0 0 16px">Ganti Nama Playlist</p>
       <input
         bind:value={_renameName}
         on:keydown={e => e.key === 'Enter' && _doRename()}
         style="width:100%;background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,.2);color:#FFF6CC;
-          font-family:'Quicksand',sans-serif;font-size:.875rem;font-weight:500;
+          font-family:'Quicksand',sans-serif;font-size:1rem;font-weight:500;
           border-radius:12px;padding:12px 16px;outline:none;margin-bottom:14px;box-sizing:border-box"
         autofocus
+        use:focusScroll
       />
-      <button on:click={_doRename}
-        style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#FFD700,#FFC300);
-          border:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:.875rem;font-weight:700;color:#141414">
-        Simpan
-      </button>
+      <div style="display:flex;gap:10px">
+        <button on:click={() => _showRename = false}
+          style="flex:1;padding:12px;border-radius:12px;background:rgba(255,215,0,.07);
+            border:1px solid rgba(255,215,0,.15);cursor:pointer;font-family:'Quicksand',sans-serif;
+            font-size:.85rem;font-weight:700;color:rgba(255,246,204,.6)">Batal</button>
+        <button on:click={_doRename}
+          style="flex:1;padding:12px;border-radius:12px;background:linear-gradient(135deg,#FFD700,#FFC300);
+            border:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:.85rem;font-weight:700;color:#141414">
+          Simpan
+        </button>
+      </div>
     </div>
   </div>
 {/if}
