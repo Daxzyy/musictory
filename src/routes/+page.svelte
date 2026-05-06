@@ -47,28 +47,6 @@
     _q8z.set(item);
     setTimeout(() => { _loadingId = null; }, 3000);
   }
-
-  function _fmt(v) {
-    if (!v) return '';
-    const n = parseInt(v.replace(/\D/g, '') || '0');
-    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'Jt views';
-    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'Rb views';
-    return n + ' views';
-  }
-
-  function _extractArtist(title) {
-    if (!title) return '';
-    const sep = title.match(/^(.+?)\s*[-–—|]\s*(.+)$/);
-    if (sep) return sep[1].trim();
-    return '';
-  }
-
-  function _cleanTitle(title) {
-    if (!title) return title;
-    const sep = title.match(/^(.+?)\s*[-–—|]\s*(.+)$/);
-    if (sep) return sep[2].trim();
-    return title;
-  }
 </script>
 
 <div style="max-width:560px;margin:0 auto;padding:28px 16px 0">
@@ -127,8 +105,7 @@
           <div class="skeleton" style="width:72px;height:72px;border-radius:8px;flex-shrink:0"></div>
           <div style="flex:1;display:flex;flex-direction:column;gap:8px">
             <div class="skeleton" style="height:11px;width:75%;border-radius:6px"></div>
-            <div class="skeleton" style="height:9px;width:50%;border-radius:6px"></div>
-            <div class="skeleton" style="height:9px;width:35%;border-radius:6px"></div>
+            <div class="skeleton" style="height:9px;width:40%;border-radius:6px"></div>
           </div>
         </div>
       {/each}
@@ -165,26 +142,14 @@
             <p style="font-size:.84rem;font-weight:700;line-height:1.35;
               display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
               color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:4px">
-              {_cleanTitle(item.title) || item.title}
+              {item.title}
             </p>
-            {#if _extractArtist(item.title)}
-              <p style="font-size:.72rem;font-weight:600;color:rgba(255,215,0,.7);margin:0 0 5px;
+            {#if item.author}
+              <p style="font-size:.72rem;font-weight:500;color:rgba(255,255,255,.4);margin:0;
                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                {_extractArtist(item.title)}
+                {item.author}
               </p>
             {/if}
-            <div style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center">
-              <span style="display:flex;align-items:center;gap:3px;color:rgba(255,246,204,.4);font-size:.67rem">
-                <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
-                {item.duration}
-              </span>
-              {#if item.views}
-                <span style="color:rgba(255,246,204,.3);font-size:.67rem">{_fmt(item.views)}</span>
-              {/if}
-              {#if item.uploaded}
-                <span style="color:rgba(255,246,204,.25);font-size:.64rem">{item.uploaded}</span>
-              {/if}
-            </div>
           </div>
         </button>
       {/each}
