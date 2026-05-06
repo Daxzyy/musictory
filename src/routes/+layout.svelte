@@ -464,9 +464,9 @@
         display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
         margin-bottom:6px">{$_q8z.title}</p>
       {#if _loading}
-        <p style="font-size:.72rem;color:rgba(255,215,0,.5)">Memuat audio...</p>
+        <p style="font-size:.72rem;color:rgba(255,255,255,.35)">Memuat audio...</p>
       {:else}
-        <p style="font-size:.72rem;color:rgba(255,215,0,.4)">{$_q8z.duration}</p>
+        <p style="font-size:.72rem;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">{$_q8z.author || ''}</p>
       {/if}
     </div>
 
