@@ -2,10 +2,11 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { _g9 } from '$lib/api.js';
-  import { _q8z, _m3v, _p1k, _x9a } from '$lib/store.js';
+  import { _q8z, _p1k, _x9a } from '$lib/store.js';
 
   const __cv = _q8z;
   let _ds = [], _ld = true, _er = null;
+  let _loadingId = null;
 
   const _queries = [
     'lagu viral tiktok 2026',
@@ -39,11 +40,12 @@
     }
   });
 
-  function _pl(item, idx) {
-    _m3v.set(true);
+  async function _pl(item, idx) {
+    _loadingId = item.videoId;
     _p1k.set(_ds);
     _x9a.set(idx);
     _q8z.set(item);
+    setTimeout(() => { _loadingId = null; }, 3000);
   }
 
   function _fmt(v) {
@@ -53,12 +55,25 @@
     if (n >= 1e3) return (n / 1e3).toFixed(1) + 'Rb views';
     return n + ' views';
   }
+
+  function _extractArtist(title) {
+    if (!title) return '';
+    const sep = title.match(/^(.+?)\s*[-–—|]\s*(.+)$/);
+    if (sep) return sep[1].trim();
+    return '';
+  }
+
+  function _cleanTitle(title) {
+    if (!title) return title;
+    const sep = title.match(/^(.+?)\s*[-–—|]\s*(.+)$/);
+    if (sep) return sep[2].trim();
+    return title;
+  }
 </script>
 
 <div style="max-width:560px;margin:0 auto;padding:28px 16px 0">
 
-  <div style="margin-bottom:28px">
-
+  <div style="margin-bottom:24px">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
 
       <div style="position:relative;width:48px;height:48px;flex-shrink:0">
@@ -103,19 +118,13 @@
       </button>
 
     </div>
-
-    <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-      <div style="height:1px;width:16px;background:rgba(255,215,0,0.3);border-radius:99px"></div>
-      <span style="font-size:.7rem;font-weight:600;color:rgba(255,215,0,0.55);letter-spacing:.08em">Lagu Trending 2026 🔥</span>
-    </div>
-
   </div>
 
   {#if _ld}
     <div style="display:flex;flex-direction:column;gap:10px">
       {#each Array(6) as _}
         <div class="glass-card" style="border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center">
-          <div class="skeleton" style="width:72px;height:72px;border-radius:12px;flex-shrink:0"></div>
+          <div class="skeleton" style="width:72px;height:72px;border-radius:8px;flex-shrink:0"></div>
           <div style="flex:1;display:flex;flex-direction:column;gap:8px">
             <div class="skeleton" style="height:11px;width:75%;border-radius:6px"></div>
             <div class="skeleton" style="height:9px;width:50%;border-radius:6px"></div>
@@ -141,33 +150,42 @@
         >
           <div style="position:relative;flex-shrink:0">
             <img src={item.thumbnail} alt={item.title}
-              style="width:72px;height:72px;border-radius:12px;object-fit:cover;display:block" loading="lazy" />
-            {#if $__cv?.videoId === item.videoId}
-              <div style="position:absolute;inset:0;border-radius:12px;background:rgba(10,10,10,.65);display:flex;align-items:center;justify-content:center">
-                <svg width="22" height="22" fill="#FFD700" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+              style="width:72px;height:72px;border-radius:8px;object-fit:cover;display:block" loading="lazy" />
+            {#if _loadingId === item.videoId}
+              <div style="position:absolute;inset:0;border-radius:8px;background:rgba(10,10,10,.7);display:flex;align-items:center;justify-content:center">
+                <div class="mini-spin"></div>
+              </div>
+            {:else if $__cv?.videoId === item.videoId}
+              <div style="position:absolute;inset:0;border-radius:8px;background:rgba(10,10,10,.55);display:flex;align-items:center;justify-content:center">
+                <svg width="20" height="20" fill="#FFD700" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
               </div>
             {/if}
           </div>
           <div style="flex:1;min-width:0">
-            <p style="font-size:.82rem;font-weight:600;line-height:1.35;
+            <p style="font-size:.84rem;font-weight:700;line-height:1.35;
               display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-              color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:6px">{item.title}</p>
+              color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:4px">
+              {_cleanTitle(item.title) || item.title}
+            </p>
+            {#if _extractArtist(item.title)}
+              <p style="font-size:.72rem;font-weight:600;color:rgba(255,215,0,.7);margin:0 0 5px;
+                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {_extractArtist(item.title)}
+              </p>
+            {/if}
             <div style="display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center">
-              <span style="display:flex;align-items:center;gap:3px;color:rgba(255,215,0,.75);font-size:.68rem">
+              <span style="display:flex;align-items:center;gap:3px;color:rgba(255,246,204,.4);font-size:.67rem">
                 <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
                 {item.duration}
               </span>
               {#if item.views}
-                <span style="color:rgba(255,246,204,.38);font-size:.68rem">{_fmt(item.views)}</span>
+                <span style="color:rgba(255,246,204,.3);font-size:.67rem">{_fmt(item.views)}</span>
               {/if}
               {#if item.uploaded}
-                <span style="color:rgba(255,246,204,.28);font-size:.65rem">{item.uploaded}</span>
+                <span style="color:rgba(255,246,204,.25);font-size:.64rem">{item.uploaded}</span>
               {/if}
             </div>
           </div>
-          {#if i < 3}
-            <div class="gold-gradient" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#0A0A0A;flex-shrink:0">{i + 1}</div>
-          {/if}
         </button>
       {/each}
     </div>
@@ -180,3 +198,15 @@
   {/if}
 
 </div>
+
+<style>
+  .mini-spin {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(255,215,0,.2);
+    border-top-color: #FFD700;
+    animation: _mspin .7s linear infinite;
+  }
+  @keyframes _mspin { to { transform: rotate(360deg); } }
+</style>
