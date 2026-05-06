@@ -49,6 +49,8 @@
 
   let _newPlName = '';
   let _showNewPlInSheet = false;
+  let _showNewPlModal = false;
+  let _pendingTrack = null;
   let _addFeedback = '';
   let _feedbackTimer = null;
 
@@ -89,6 +91,17 @@
     _newPlName = '';
     _showNewPlInSheet = false;
     _closeMenuSheet();
+  }
+
+  function _doCreateAndAddModal() {
+    if (!_newPlName.trim() || !_pendingTrack) return;
+    const pl = createPlaylist(_newPlName.trim());
+    addTrackToPlaylist(pl.id, _pendingTrack);
+    _playlists.set(getPlaylists());
+    _showFeedback(`Ditambahkan ke "${pl.name}"`);
+    _newPlName = '';
+    _showNewPlModal = false;
+    _pendingTrack = null;
   }
 
   function _onPlayerTouchStart(e) {
@@ -569,7 +582,7 @@
         <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.4);letter-spacing:.1em;margin:0 0 12px">TAMBAH KE PLAYLIST</p>
 
         {#if !_showNewPlInSheet}
-          <button on:click={() => _showNewPlInSheet = true}
+          <button on:click={() => { _pendingTrack = $_showMenu; _showMenu.set(null); _showNewPlModal = true; _newPlName = ''; }}
             style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 0;
               background:none;border:none;border-bottom:1px solid rgba(255,215,0,.07);cursor:pointer;text-align:left">
             <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
@@ -579,24 +592,6 @@
             </div>
             <span style="font-size:.82rem;font-weight:700;color:rgba(255,215,0,.7)">Buat Playlist Baru</span>
           </button>
-        {:else}
-          <div style="display:flex;gap:8px;margin-bottom:4px;border-bottom:1px solid rgba(255,215,0,.07);padding-bottom:14px">
-            <input
-              bind:value={_newPlName}
-              on:keydown={e => e.key === 'Enter' && _doCreateAndAdd()}
-              placeholder="Nama playlist baru..."
-              style="flex:1;background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,.2);color:#FFF6CC;
-                font-family:'Quicksand',sans-serif;font-size:.82rem;font-weight:500;
-                border-radius:10px;padding:10px 12px;outline:none"
-              autofocus
-            />
-            <button on:click={_doCreateAndAdd}
-              style="padding:10px 16px;border-radius:10px;background:linear-gradient(135deg,#FFD700,#FFC300);
-                border:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:.78rem;font-weight:700;color:#141414">
-              Buat
-            </button>
-          </div>
-        {/if}
 
         {#if $_playlists.length === 0 && !_showNewPlInSheet}
           <p style="font-size:.76rem;color:rgba(255,246,204,.3);text-align:center;padding:16px 0">Belum ada playlist</p>
@@ -632,6 +627,36 @@
             <span style="font-size:.82rem;font-weight:700;color:rgba(255,100,100,.7)">Hapus dari Riwayat</span>
           </button>
         {/if}
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if _showNewPlModal}
+  <div style="position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px"
+    on:click={() => { _showNewPlModal = false; _pendingTrack = null; }}>
+    <div style="width:100%;max-width:400px;background:#1c1c1c;border-radius:20px;padding:24px 20px;border:1px solid rgba(255,215,0,.15)"
+      on:click|stopPropagation>
+      <p style="font-size:.95rem;font-weight:700;color:#FFD700;margin:0 0 16px">Playlist Baru</p>
+      <input
+        bind:value={_newPlName}
+        on:keydown={e => { if (e.key === 'Enter') _doCreateAndAddModal(); }}
+        placeholder="Nama playlist baru..."
+        style="width:100%;background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,.2);color:#FFF6CC;
+          font-family:'Quicksand',sans-serif;font-size:1rem;font-weight:500;
+          border-radius:12px;padding:12px 16px;outline:none;margin-bottom:14px;box-sizing:border-box"
+        autofocus
+      />
+      <div style="display:flex;gap:10px">
+        <button on:click={() => { _showNewPlModal = false; _pendingTrack = null; }}
+          style="flex:1;padding:12px;border-radius:12px;background:rgba(255,215,0,.07);
+            border:1px solid rgba(255,215,0,.15);cursor:pointer;font-family:'Quicksand',sans-serif;
+            font-size:.85rem;font-weight:700;color:rgba(255,246,204,.6)">Batal</button>
+        <button on:click={_doCreateAndAddModal}
+          style="flex:1;padding:12px;border-radius:12px;background:linear-gradient(135deg,#FFD700,#FFC300);
+            border:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:.85rem;font-weight:700;color:#141414">
+          Buat
+        </button>
       </div>
     </div>
   </div>
