@@ -581,19 +581,18 @@
       <div style="padding:14px 20px 0">
         <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.4);letter-spacing:.1em;margin:0 0 12px">TAMBAH KE PLAYLIST</p>
 
-        {#if !_showNewPlInSheet}
-          <button on:click={() => { _pendingTrack = $_showMenu; _showMenu.set(null); _showNewPlModal = true; _newPlName = ''; }}
-            style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 0;
-              background:none;border:none;border-bottom:1px solid rgba(255,215,0,.07);cursor:pointer;text-align:left">
-            <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
-              background:rgba(255,215,0,.08);border:1px dashed rgba(255,215,0,.25);
-              display:flex;align-items:center;justify-content:center">
-              <svg width="18" height="18" fill="rgba(255,215,0,.6)" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            </div>
-            <span style="font-size:.82rem;font-weight:700;color:rgba(255,215,0,.7)">Buat Playlist Baru</span>
-          </button>
+        <button on:click={() => { _pendingTrack = $_showMenu; _showMenu.set(null); _showNewPlModal = true; _newPlName = ''; }}
+          style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 0;
+            background:none;border:none;border-bottom:1px solid rgba(255,215,0,.07);cursor:pointer;text-align:left">
+          <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
+            background:rgba(255,215,0,.08);border:1px dashed rgba(255,215,0,.25);
+            display:flex;align-items:center;justify-content:center">
+            <svg width="18" height="18" fill="rgba(255,215,0,.6)" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          </div>
+          <span style="font-size:.82rem;font-weight:700;color:rgba(255,215,0,.7)">Buat Playlist Baru</span>
+        </button>
 
-        {#if $_playlists.length === 0 && !_showNewPlInSheet}
+        {#if $_playlists.length === 0}
           <p style="font-size:.76rem;color:rgba(255,246,204,.3);text-align:center;padding:16px 0">Belum ada playlist</p>
         {:else}
           {#each $_playlists as pl}
