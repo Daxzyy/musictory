@@ -5,9 +5,55 @@
 
   let _ld = false, _t = null, _init = false;
   let _loadingId = null;
-
   let _qv = '';
   let _ds = [];
+  let _suggestions = [];
+  let _showSug = false;
+  let _sugT = null;
+  let _inputEl = null;
+  let _history = [];
+
+  const _HK = '_msc_sh';
+  const _HM = 10;
+
+  function _loadHistory() {
+    try { return JSON.parse(localStorage.getItem(_HK) || '[]'); } catch { return []; }
+  }
+
+  function _saveHistory(q) {
+    try {
+      let h = _loadHistory();
+      h = h.filter(x => x.toLowerCase() !== q.toLowerCase());
+      h.unshift(q);
+      if (h.length > _HM) h = h.slice(0, _HM);
+      localStorage.setItem(_HK, JSON.stringify(h));
+      _history = h;
+    } catch {}
+  }
+
+  function _removeHistory(q) {
+    try {
+      let h = _loadHistory();
+      h = h.filter(x => x !== q);
+      localStorage.setItem(_HK, JSON.stringify(h));
+      _history = h;
+      _buildSuggestions(_qv);
+    } catch {}
+  }
+
+  function _clearHistory() {
+    try {
+      localStorage.removeItem(_HK);
+      _history = [];
+      _buildSuggestions(_qv);
+    } catch {}
+  }
+
+  import { onDestroy, onMount } from 'svelte';
+
+  onMount(() => {
+    _history = _loadHistory();
+  });
 
   const unsubQ = _searchQuery.subscribe(v => { _qv = v; });
   const unsubR = _searchResults.subscribe(v => {
@@ -15,17 +61,50 @@
     if (v.length > 0) _init = true;
   });
 
-  import { onDestroy } from 'svelte';
   onDestroy(() => { unsubQ(); unsubR(); });
 
-  function _deb(val) {
-    if (_t) clearTimeout(_t);
+  async function _fetchSuggestions(q) {
+    try {
+      const r = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`);
+      return await r.json();
+    } catch { return []; }
+  }
+
+  function _buildSuggestions(q) {
+    const h = _history.filter(x => x.toLowerCase().includes(q.toLowerCase()));
+    _suggestions = { history: h, api: _suggestions.api || [] };
+  }
+
+  function _onInput(e) {
+    const val = e.target.value;
+    _searchQuery.set(val);
+    _qv = val;
+    _showSug = true;
+
     if (!val.trim()) {
+      _suggestions = { history: _history, api: [] };
+      _ld = false;
+      _init = false;
       _ds = [];
       _searchResults.set([]);
-      _init = false;
+      if (_t) clearTimeout(_t);
+      if (_sugT) clearTimeout(_sugT);
       return;
     }
+
+    _buildSuggestions(val);
+
+    if (_sugT) clearTimeout(_sugT);
+    _sugT = setTimeout(async () => {
+      const api = await _fetchSuggestions(val);
+      const historySet = new Set(_history.map(x => x.toLowerCase()));
+      _suggestions = {
+        history: _history.filter(x => x.toLowerCase().includes(val.toLowerCase())),
+        api: api.filter(x => !historySet.has(x.toLowerCase()))
+      };
+    }, 200);
+
+    if (_t) clearTimeout(_t);
     _ld = true;
     _init = true;
     _t = setTimeout(async () => {
@@ -34,7 +113,7 @@
         _ds = results;
         _searchResults.set(results);
         _p1k.set(results);
-      } catch (e) {
+      } catch {
         _ds = [];
         _searchResults.set([]);
       } finally {
@@ -43,10 +122,33 @@
     }, 300);
   }
 
-  function _onInput(e) {
-    const val = e.target.value;
-    _searchQuery.set(val);
-    _deb(val);
+  function _selectSuggestion(q) {
+    _searchQuery.set(q);
+    _qv = q;
+    _showSug = false;
+    _saveHistory(q);
+    _ld = true;
+    _init = true;
+    if (_t) clearTimeout(_t);
+    _t = setTimeout(async () => {
+      try {
+        const results = await _g9(q);
+        _ds = results;
+        _searchResults.set(results);
+        _p1k.set(results);
+      } catch {
+        _ds = [];
+        _searchResults.set([]);
+      } finally {
+        _ld = false;
+      }
+    }, 0);
+  }
+
+  function _onSubmit() {
+    if (!_qv.trim()) return;
+    _showSug = false;
+    _saveHistory(_qv.trim());
   }
 
   function _clear() {
@@ -54,6 +156,20 @@
     _searchResults.set([]);
     _ds = [];
     _init = false;
+    _showSug = false;
+    _suggestions = { history: _history, api: [] };
+    if (_t) clearTimeout(_t);
+    if (_sugT) clearTimeout(_sugT);
+  }
+
+  function _onFocus() {
+    _history = _loadHistory();
+    _suggestions = { history: _qv ? _history.filter(x => x.toLowerCase().includes(_qv.toLowerCase())) : _history, api: _suggestions.api || [] };
+    _showSug = true;
+  }
+
+  function _onBlur() {
+    setTimeout(() => { _showSug = false; }, 180);
   }
 
   async function _pl(item, idx) {
@@ -69,6 +185,8 @@
     _playlists.set(getPlaylists());
     _showMenu.set(item);
   }
+
+  $: _hasSug = _showSug && ((_suggestions.history?.length > 0) || (_suggestions.api?.length > 0));
 </script>
 
 <div style="max-width:560px;margin:0 auto;padding:24px 16px 0">
@@ -80,26 +198,88 @@
     </div>
 
     <div style="position:relative">
-      <div style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,215,0,.5);pointer-events:none">
+      <div style="position:absolute;left:14px;top:{_hasSug ? '17px' : '50%'};transform:{_hasSug ? 'none' : 'translateY(-50%)'};color:rgba(255,215,0,.5);pointer-events:none;z-index:2;transition:top .15s,transform .15s">
         <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       </div>
-      <input
-        value={_qv}
-        on:input={_onInput}
-        type="text"
-        placeholder="Cari lagu, artis, album..."
-        style="width:100%;background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,.16);color:#FFF6CC;
-          font-family:'Quicksand',sans-serif;font-size:.875rem;font-weight:500;
-          border-radius:14px;padding:13px 44px 13px 44px;outline:none;transition:border-color .2s,box-shadow .2s"
-        on:focus={e => { e.target.style.borderColor='rgba(255,215,0,.45)'; e.target.style.boxShadow='0 0 0 3px rgba(255,215,0,.07)'; }}
-        on:blur={e => { e.target.style.borderColor='rgba(255,215,0,.16)'; e.target.style.boxShadow='none'; }}
-      />
-      {#if _qv}
-        <button on:click={_clear}
-          style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,246,204,.4);background:none;border:none;cursor:pointer;padding:4px;transition:color .15s"
-          onmouseenter="this.style.color='rgba(255,246,204,.8)'" onmouseleave="this.style.color='rgba(255,246,204,.4)'">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-        </button>
+
+      <div style="position:relative;z-index:10">
+        <input
+          bind:this={_inputEl}
+          value={_qv}
+          on:input={_onInput}
+          on:focus={_onFocus}
+          on:blur={_onBlur}
+          on:keydown={e => { if (e.key === 'Enter') _onSubmit(); if (e.key === 'Escape') _showSug = false; }}
+          type="text"
+          placeholder="Cari lagu, artis, album..."
+          style="width:100%;background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,{_hasSug ? '.45' : '.16'});color:#FFF6CC;
+            font-family:'Quicksand',sans-serif;font-size:.875rem;font-weight:500;
+            border-radius:{_hasSug ? '14px 14px 0 0' : '14px'};padding:13px 44px 13px 44px;outline:none;
+            transition:border-color .2s,box-shadow .2s,border-radius .15s;
+            box-shadow:{_hasSug ? '0 0 0 3px rgba(255,215,0,.07)' : 'none'}"
+        />
+        {#if _qv}
+          <button on:click={_clear}
+            style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,246,204,.4);background:none;border:none;cursor:pointer;padding:4px;transition:color .15s;z-index:2"
+            onmouseenter="this.style.color='rgba(255,246,204,.8)'" onmouseleave="this.style.color='rgba(255,246,204,.4)'">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        {/if}
+      </div>
+
+      {#if _hasSug}
+        <div style="position:absolute;left:0;right:0;top:100%;z-index:9;
+          background:#1c1c1c;border:1.5px solid rgba(255,215,0,.45);border-top:none;
+          border-radius:0 0 14px 14px;overflow:hidden;
+          box-shadow:0 8px 24px rgba(0,0,0,.5)">
+
+          {#if _suggestions.history?.length > 0}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 4px">
+              <span style="font-size:.6rem;font-weight:700;color:rgba(255,215,0,.35);letter-spacing:.1em">RIWAYAT</span>
+              <button on:click={_clearHistory}
+                style="font-size:.6rem;font-weight:700;color:rgba(255,100,100,.45);background:none;border:none;cursor:pointer;padding:2px 4px;font-family:'Quicksand',sans-serif"
+                onmouseenter="this.style.color='rgba(255,100,100,.8)'" onmouseleave="this.style.color='rgba(255,100,100,.45)'">
+                Hapus semua
+              </button>
+            </div>
+            {#each _suggestions.history as h}
+              <div style="display:flex;align-items:center;gap:0">
+                <button on:mousedown|preventDefault={() => _selectSuggestion(h)}
+                  style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 14px;
+                    background:none;border:none;cursor:pointer;text-align:left;transition:background .12s"
+                  onmouseenter="this.style.background='rgba(255,215,0,.06)'" onmouseleave="this.style.background='none'">
+                  <svg width="14" height="14" fill="rgba(255,215,0,.35)" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M13 3a9 9 0 1 0 .001 18.001A9 9 0 0 0 13 3zm0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm.5-11H12v6l5.25 3.15.75-1.23-4.5-2.67V8z"/></svg>
+                  <span style="font-size:.82rem;font-weight:600;color:rgba(255,246,204,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{h}</span>
+                </button>
+                <button on:mousedown|preventDefault={() => _removeHistory(h)}
+                  style="padding:10px 14px;background:none;border:none;cursor:pointer;color:rgba(255,246,204,.2);flex-shrink:0;transition:color .12s"
+                  onmouseenter="this.style.color='rgba(255,100,100,.6)'" onmouseleave="this.style.color='rgba(255,246,204,.2)'">
+                  <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+              </div>
+            {/each}
+          {/if}
+
+          {#if _suggestions.api?.length > 0}
+            {#if _suggestions.history?.length > 0}
+              <div style="height:1px;background:rgba(255,215,0,.07);margin:2px 0"></div>
+            {/if}
+            <div style="padding:8px 14px 4px">
+              <span style="font-size:.6rem;font-weight:700;color:rgba(255,215,0,.35);letter-spacing:.1em">SARAN</span>
+            </div>
+            {#each _suggestions.api as s}
+              <button on:mousedown|preventDefault={() => _selectSuggestion(s)}
+                style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;
+                  background:none;border:none;cursor:pointer;text-align:left;transition:background .12s"
+                onmouseenter="this.style.background='rgba(255,215,0,.06)'" onmouseleave="this.style.background='none'">
+                <svg width="14" height="14" fill="rgba(255,215,0,.25)" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <span style="font-size:.82rem;font-weight:600;color:rgba(255,246,204,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{s}</span>
+              </button>
+            {/each}
+          {/if}
+
+          <div style="height:6px"></div>
+        </div>
       {/if}
     </div>
   </div>
