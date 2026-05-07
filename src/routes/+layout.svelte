@@ -603,10 +603,24 @@
               <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
                 background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.15);
                 overflow:hidden;display:flex;align-items:center;justify-content:center">
-                {#if pl.tracks.length > 0}
-                  <img src={pl.tracks[0].thumbnail} alt="" style="width:100%;height:100%;object-fit:cover" />
-                {:else}
+                {#if pl.tracks.length === 0}
                   <svg width="18" height="18" fill="rgba(255,215,0,.35)" viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+                {:else if pl.tracks.length === 1}
+                  <img src={pl.tracks[0].thumbnail} alt="" style="width:100%;height:100%;object-fit:cover" />
+                {:else if pl.tracks.length === 2}
+                  <div style="display:grid;grid-template-columns:1fr 1fr;width:100%;height:100%">
+                    {#each pl.tracks.slice(0,2) as t}<img src={t.thumbnail} alt="" style="width:100%;height:100%;object-fit:cover" />{/each}
+                  </div>
+                {:else if pl.tracks.length === 3}
+                  <div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%">
+                    <img src={pl.tracks[0].thumbnail} alt="" style="width:100%;height:100%;object-fit:cover;grid-row:1/3" />
+                    <img src={pl.tracks[1].thumbnail} alt="" style="width:100%;height:100%;object-fit:cover" />
+                    <img src={pl.tracks[2].thumbnail} alt="" style="width:100%;height:100%;object-fit:cover" />
+                  </div>
+                {:else}
+                  <div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%">
+                    {#each pl.tracks.slice(0,4) as t}<img src={t.thumbnail} alt="" style="width:100%;height:100%;object-fit:cover" />{/each}
+                  </div>
                 {/if}
               </div>
               <div style="flex:1;min-width:0">
