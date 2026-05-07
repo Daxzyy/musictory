@@ -298,7 +298,7 @@
 {/if}
 
 {#if _openedPlaylist}
-  <div style="position:fixed;inset:0;z-index:95;background:#141414;overflow-y:auto;overscroll-behavior:contain">
+  <div style="position:fixed;inset:0;z-index:35;background:#141414;overflow-y:auto;overscroll-behavior:contain">
     <div style="max-width:560px;margin:0 auto;padding:24px 16px 0">
 
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
