@@ -633,7 +633,7 @@
         {/if}
 
         {#if $_showMenu?._ctx === 'recent'}
-          <button on:click={() => { import('$lib/playlist.js').then(m => { m.removeRecentlyPlayed($_showMenu.videoId); _recentlyPlayed.set(getRecentlyPlayed ? getRecentlyPlayed() : []); }); _closeMenuSheet(); }}
+          <button on:click={() => { import('$lib/playlist.js').then(m => { m.removeRecentlyPlayed($_showMenu.videoId); _recentlyPlayed.set(m.getRecentlyPlayed()); }); _closeMenuSheet(); }}
             style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 0;
               background:none;border:none;cursor:pointer;text-align:left;margin-top:4px">
             <svg width="18" height="18" fill="rgba(255,100,100,.6)" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
