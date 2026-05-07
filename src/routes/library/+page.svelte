@@ -12,6 +12,15 @@
   let _showRename = false;
   let _renameName = '';
 
+   function _plCover(tracks) {
+    const t = tracks || [];
+    if (t.length === 0) return null;
+    if (t.length === 1) return { type: 'single', imgs: [t[0].thumbnail] };
+    if (t.length === 2) return { type: 'double', imgs: [t[0].thumbnail, t[1].thumbnail] };
+    if (t.length === 3) return { type: 'triple', imgs: [t[0].thumbnail, t[1].thumbnail, t[2].thumbnail] };
+    return { type: 'quad', imgs: [t[0].thumbnail, t[1].thumbnail, t[2].thumbnail, t[3].thumbnail] };
+  }
+
   function focusScroll(node) {
     function onFocus() {
       setTimeout(() => {
@@ -29,7 +38,7 @@
 
   function _pl(item, list, idx) {
     _loadingId = item.videoId;
-    _p1k.set(list);
+    _p1k.set([...(list || [])]);
     _x9a.set(idx);
     _q8z.set(item);
     setTimeout(() => { _loadingId = null; }, 3000);
@@ -61,7 +70,8 @@
   }
 
   function _openPl(pl) {
-    _openedPlaylist = { ...$_playlists.find(p => p.id === pl.id) };
+    const found = $_playlists.find(p => p.id === pl.id);
+    _openedPlaylist = found ? { ...found, tracks: [...(found.tracks || [])] } : null;
   }
 
   function _doRename() {
@@ -69,7 +79,8 @@
     import('$lib/playlist.js').then(m => {
       m.renamePlaylist(_openedPlaylist.id, _renameName.trim());
       _playlists.set(getPlaylists());
-      _openedPlaylist = { ...$_playlists.find(p => p.id === _openedPlaylist.id) };
+      const updated = $_playlists.find(p => p.id === _openedPlaylist.id);
+      _openedPlaylist = updated ? { ...updated, tracks: [...(updated.tracks || [])] } : null;
       _showRename = false;
       _renameName = '';
     });
@@ -80,7 +91,8 @@
     import('$lib/playlist.js').then(m => {
       m.removeTrackFromPlaylist(_openedPlaylist.id, videoId);
       _playlists.set(getPlaylists());
-      _openedPlaylist = { ...$_playlists.find(p => p.id === _openedPlaylist.id) };
+      const refreshed = $_playlists.find(p => p.id === _openedPlaylist.id);
+      _openedPlaylist = refreshed ? { ...refreshed, tracks: [...(refreshed.tracks || [])] } : null;
     });
   }
 
@@ -192,11 +204,25 @@
             style="border-radius:16px;padding:14px;display:flex;gap:12px;align-items:center;text-align:left;width:100%;cursor:pointer">
             <div style="width:56px;height:56px;border-radius:10px;flex-shrink:0;
               background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.15);
-              display:flex;align-items:center;justify-content:center;overflow:hidden">
-              {#if pl.tracks.length > 0}
-                <img src={pl.tracks[0].thumbnail} alt="" style="width:100%;height:100%;object-fit:cover" />
-              {:else}
+              overflow:hidden;display:flex;align-items:center;justify-content:center">
+              {#if pl.tracks.length === 0}
                 <svg width="22" height="22" fill="rgba(255,215,0,.4)" viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+              {:else if _plCover(pl.tracks).type === 'single'}
+                <img src={_plCover(pl.tracks).imgs[0]} alt="" style="width:100%;height:100%;object-fit:cover" />
+              {:else if _plCover(pl.tracks).type === 'double'}
+                <div style="display:grid;grid-template-columns:1fr 1fr;width:100%;height:100%">
+                  {#each _plCover(pl.tracks).imgs as img}<img src={img} alt="" style="width:100%;height:100%;object-fit:cover" />{/each}
+                </div>
+              {:else if _plCover(pl.tracks).type === 'triple'}
+                <div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%">
+                  <img src={_plCover(pl.tracks).imgs[0]} alt="" style="width:100%;height:100%;object-fit:cover;grid-row:1/3" />
+                  <img src={_plCover(pl.tracks).imgs[1]} alt="" style="width:100%;height:100%;object-fit:cover" />
+                  <img src={_plCover(pl.tracks).imgs[2]} alt="" style="width:100%;height:100%;object-fit:cover" />
+                </div>
+              {:else}
+                <div style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%">
+                  {#each _plCover(pl.tracks).imgs as img}<img src={img} alt="" style="width:100%;height:100%;object-fit:cover" />{/each}
+                </div>
               {/if}
             </div>
             <div style="flex:1;min-width:0">
