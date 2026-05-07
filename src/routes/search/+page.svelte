@@ -186,6 +186,16 @@
     _showMenu.set(item);
   }
 
+  function _highlight(text, query) {
+    if (!query.trim()) return `<span style="color:rgba(255,246,204,.8)">${text}</span>`;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return `<span style="color:rgba(255,246,204,.8)">${text}</span>`;
+    const before = text.slice(0, idx);
+    const match = text.slice(idx, idx + query.length);
+    const after = text.slice(idx + query.length);
+    return `<span style="color:rgba(255,246,204,.38)">${before}</span><span style="color:#FFF6CC;font-weight:700">${match}</span><span style="color:rgba(255,246,204,.38)">${after}</span>`;
+  }
+
   $: _hasSug = _showSug && ((_suggestions.history?.length > 0) || (_suggestions.api?.length > 0));
 </script>
 
@@ -234,14 +244,6 @@
           box-shadow:0 8px 24px rgba(0,0,0,.5)">
 
           {#if _suggestions.history?.length > 0}
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 4px">
-              <span style="font-size:.6rem;font-weight:700;color:rgba(255,215,0,.35);letter-spacing:.1em">RIWAYAT</span>
-              <button on:click={_clearHistory}
-                style="font-size:.6rem;font-weight:700;color:rgba(255,100,100,.45);background:none;border:none;cursor:pointer;padding:2px 4px;font-family:'Quicksand',sans-serif"
-                onmouseenter="this.style.color='rgba(255,100,100,.8)'" onmouseleave="this.style.color='rgba(255,100,100,.45)'">
-                Hapus semua
-              </button>
-            </div>
             {#each _suggestions.history as h}
               <div style="display:flex;align-items:center;gap:0">
                 <button on:mousedown|preventDefault={() => _selectSuggestion(h)}
@@ -249,7 +251,7 @@
                     background:none;border:none;cursor:pointer;text-align:left;transition:background .12s"
                   onmouseenter="this.style.background='rgba(255,215,0,.06)'" onmouseleave="this.style.background='none'">
                   <svg width="14" height="14" fill="rgba(255,215,0,.35)" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M13 3a9 9 0 1 0 .001 18.001A9 9 0 0 0 13 3zm0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm.5-11H12v6l5.25 3.15.75-1.23-4.5-2.67V8z"/></svg>
-                  <span style="font-size:.82rem;font-weight:600;color:rgba(255,246,204,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{h}</span>
+                  <span style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{@html _highlight(h, _qv)}</span>
                 </button>
                 <button on:mousedown|preventDefault={() => _removeHistory(h)}
                   style="padding:10px 14px;background:none;border:none;cursor:pointer;color:rgba(255,246,204,.2);flex-shrink:0;transition:color .12s"
@@ -264,16 +266,13 @@
             {#if _suggestions.history?.length > 0}
               <div style="height:1px;background:rgba(255,215,0,.07);margin:2px 0"></div>
             {/if}
-            <div style="padding:8px 14px 4px">
-              <span style="font-size:.6rem;font-weight:700;color:rgba(255,215,0,.35);letter-spacing:.1em">SARAN</span>
-            </div>
             {#each _suggestions.api as s}
               <button on:mousedown|preventDefault={() => _selectSuggestion(s)}
                 style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;
                   background:none;border:none;cursor:pointer;text-align:left;transition:background .12s"
                 onmouseenter="this.style.background='rgba(255,215,0,.06)'" onmouseleave="this.style.background='none'">
                 <svg width="14" height="14" fill="rgba(255,215,0,.25)" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <span style="font-size:.82rem;font-weight:600;color:rgba(255,246,204,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{s}</span>
+                <span style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{@html _highlight(s, _qv)}</span>
               </button>
             {/each}
           {/if}
