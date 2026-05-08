@@ -546,12 +546,12 @@
   </div>
 
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;gap:32px;overflow:hidden">
-    <div style="position:relative;width:240px;height:240px">
+    <div style="position:relative;width:min(300px,80vw);height:min(300px,80vw)">
       {#if _loading}
-        <img src={$_q8z.thumbnail} alt="" style="width:240px;height:240px;border-radius:20px;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.1);opacity:.4" />
+        <img src={$_q8z.thumbnail} alt="" style="width:100%;height:100%;border-radius:20px;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.1);opacity:.4" />
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div class="np-spin"></div></div>
       {:else}
-        <img src={$_q8z.thumbnail} alt="" style="width:240px;height:240px;border-radius:20px;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.15);box-shadow:0 8px 32px rgba(0,0,0,.5)" />
+        <img src={$_q8z.thumbnail} alt="" style="width:100%;height:100%;border-radius:20px;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.15);box-shadow:0 8px 32px rgba(0,0,0,.5)" />
       {/if}
     </div>
 
