@@ -301,7 +301,7 @@
       const shuffled = [currentTrack, ..._shuffleArr(rest)];
       _p1k.set(shuffled);
       _x9a.set(0);
-      _showFeedback('🔀 Lagu akan diputar acak');
+      _showFeedback('Lagu akan diputar acak');
     } else {
       const orig = $_origQueue;
       if (orig.length) {
@@ -311,7 +311,7 @@
         _x9a.set(newIdx >= 0 ? newIdx : 0);
         _origQueue.set([]);
       }
-      _showFeedback('🔀 Shuffle dimatikan');
+      _showFeedback('Shuffle dimatikan');
     }
     _shuffle.set(!current);
   }
@@ -340,13 +340,13 @@
         _origQueue.set([]);
       }
       _shuffle.set(false);
-      _showFeedback('🔂 Lagu ini akan diulang terus (shuffle dimatikan)');
+      _showFeedback('Lagu ini akan diulang terus (shuffle dimatikan)');
     } else if (next === 'all') {
-      _showFeedback('🔁 Semua lagu akan diulang');
+      _showFeedback('Semua lagu akan diulang');
     } else if (next === 'one') {
-      _showFeedback('🔂 Lagu ini akan diulang terus');
+      _showFeedback('Lagu ini akan diulang terus');
     } else {
-      _showFeedback('➡️ Repeat dimatikan');
+      _showFeedback('Repeat dimatikan');
     }
   }
 
@@ -548,12 +548,10 @@
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;gap:32px;overflow:hidden">
     <div style="position:relative;width:240px;height:240px">
       {#if _loading}
-        <img src={$_q8z.thumbnail} alt="" style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;border:3px solid rgba(255,215,0,.1);opacity:.4" />
+        <img src={$_q8z.thumbnail} alt="" style="width:240px;height:240px;border-radius:20px;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.1);opacity:.4" />
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div class="np-spin"></div></div>
       {:else}
-        <img src={$_q8z.thumbnail} alt="" style="width:240px;height:240px;border-radius:50%;object-fit:cover;display:block;border:3px solid rgba(255,215,0,.2);animation:_spin 8s linear infinite;animation-play-state:{$_playing ? 'running' : 'paused'}" />
-        <div style="position:absolute;inset:-8px;border-radius:50%;border:2px solid transparent;border-top-color:#FFD700;border-right-color:rgba(255,215,0,.2);animation:_ring 2.5s linear infinite;animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#141414;border:2px solid rgba(255,215,0,.4)"></div>
+        <img src={$_q8z.thumbnail} alt="" style="width:240px;height:240px;border-radius:20px;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.15);box-shadow:0 8px 32px rgba(0,0,0,.5)" />
       {/if}
     </div>
 
