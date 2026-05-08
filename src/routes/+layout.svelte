@@ -301,6 +301,7 @@
       const shuffled = [currentTrack, ..._shuffleArr(rest)];
       _p1k.set(shuffled);
       _x9a.set(0);
+      _showFeedback('🔀 Lagu akan diputar acak');
     } else {
       const orig = $_origQueue;
       if (orig.length) {
@@ -310,6 +311,7 @@
         _x9a.set(newIdx >= 0 ? newIdx : 0);
         _origQueue.set([]);
       }
+      _showFeedback('🔀 Shuffle dimatikan');
     }
     _shuffle.set(!current);
   }
@@ -326,7 +328,26 @@
   function _cycleRepeat() {
     const modes = ['off', 'all', 'one'];
     const cur = modes.indexOf($_repeat);
-    _repeat.set(modes[(cur + 1) % modes.length]);
+    const next = modes[(cur + 1) % modes.length];
+    _repeat.set(next);
+    if (next === 'one' && $_shuffle) {
+      const orig = $_origQueue;
+      if (orig.length) {
+        const currentTrack = $_q8z;
+        _p1k.set(orig);
+        const newIdx = orig.findIndex(t => t.videoId === currentTrack?.videoId);
+        _x9a.set(newIdx >= 0 ? newIdx : 0);
+        _origQueue.set([]);
+      }
+      _shuffle.set(false);
+      _showFeedback('🔂 Lagu ini akan diulang terus (shuffle dimatikan)');
+    } else if (next === 'all') {
+      _showFeedback('🔁 Semua lagu akan diulang');
+    } else if (next === 'one') {
+      _showFeedback('🔂 Lagu ini akan diulang terus');
+    } else {
+      _showFeedback('➡️ Repeat dimatikan');
+    }
   }
 
   let _seekEl1 = null;
