@@ -1,6 +1,8 @@
 import yts from 'yt-search';
 import crypto from 'crypto';
 
+export const config = { runtime: 'nodejs20.x' };
+
 const SECRET = 'msc_s3cr3t_g1vy_2026';
 const ENC_KEY = Buffer.from('4d7a9c2e1f8b3a6d0e5c9f2b7a4e1d8c', 'hex');
 const SIGN_TTL = 15000;
