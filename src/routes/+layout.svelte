@@ -2,7 +2,7 @@
   import '../app.css';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { _q8z, _p1k, _x9a, _playing, _showNP, _showMenu, _showAddPl, _playlists, _recentlyPlayed } from '$lib/store.js';
+  import { _q8z, _p1k, _x9a, _playing, _showNP, _showMenu, _showAddPl, _playlists, _recentlyPlayed, _shuffle, _repeat, _origQueue } from '$lib/store.js';
   import { _getStreamUrl } from '$lib/api.js';
   import { addRecentlyPlayed, getPlaylists, addTrackToPlaylist, createPlaylist } from '$lib/playlist.js';
   import { onDestroy, onMount, tick } from 'svelte';
@@ -278,14 +278,55 @@
   function _nxt() {
     const a = $_p1k, b = $_x9a;
     if (!a.length) return;
+    if ($_repeat === 'one') { if (_audioEl) { _audioEl.currentTime = 0; _audioEl.play().catch(() => {}); } return; }
     const n = (b + 1) % a.length;
+    if (n === 0 && $_repeat === 'off') { _playing.set(false); if (_audioEl) _audioEl.pause(); return; }
     _x9a.set(n); _q8z.set(a[n]);
   }
   function _prv() {
     const a = $_p1k, b = $_x9a;
     if (!a.length) return;
+    if (_elapsed > 3) { if (_audioEl) { _audioEl.currentTime = 0; _elapsed = 0; } return; }
     const n = (b - 1 + a.length) % a.length;
     _x9a.set(n); _q8z.set(a[n]);
+  }
+
+  function _toggleShuffle() {
+    const current = $_shuffle;
+    if (!current) {
+      _origQueue.set([...$_p1k]);
+      const idx = $_x9a;
+      const currentTrack = $_p1k[idx];
+      const rest = $_p1k.filter((_, i) => i !== idx);
+      const shuffled = [currentTrack, ..._shuffleArr(rest)];
+      _p1k.set(shuffled);
+      _x9a.set(0);
+    } else {
+      const orig = $_origQueue;
+      if (orig.length) {
+        const currentTrack = $_q8z;
+        _p1k.set(orig);
+        const newIdx = orig.findIndex(t => t.videoId === currentTrack?.videoId);
+        _x9a.set(newIdx >= 0 ? newIdx : 0);
+        _origQueue.set([]);
+      }
+    }
+    _shuffle.set(!current);
+  }
+
+  function _shuffleArr(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function _cycleRepeat() {
+    const modes = ['off', 'all', 'one'];
+    const cur = modes.indexOf($_repeat);
+    _repeat.set(modes[(cur + 1) % modes.length]);
   }
 
   let _seekEl1 = null;
@@ -525,7 +566,13 @@
       </div>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:center;gap:20px">
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px">
+      <button on:click={_toggleShuffle}
+        style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:{$_shuffle ? 'rgba(255,215,0,.15)' : 'transparent'};border:1px solid {$_shuffle ? 'rgba(255,215,0,.4)' : 'rgba(255,215,0,.1)'};cursor:pointer;
+          color:{$_shuffle ? '#FFD700' : 'rgba(255,246,204,.3)'};transition:all .2s">
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+      </button>
       <button on:click={_prv}
         style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
           background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;
@@ -554,6 +601,16 @@
         onmouseenter="this.style.background='rgba(255,215,0,.18)';this.style.color='#FFD700'"
         onmouseleave="this.style.background='rgba(255,215,0,.07)';this.style.color='rgba(255,246,204,.6)'">
         <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6h2v12h-2zm-3.5 6L4 6v12z"/></svg>
+      </button>
+      <button on:click={_cycleRepeat}
+        style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:{$_repeat !== 'off' ? 'rgba(255,215,0,.15)' : 'transparent'};border:1px solid {$_repeat !== 'off' ? 'rgba(255,215,0,.4)' : 'rgba(255,215,0,.1)'};cursor:pointer;
+          color:{$_repeat !== 'off' ? '#FFD700' : 'rgba(255,246,204,.3)'};transition:all .2s;position:relative">
+        {#if $_repeat === 'one'}
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z"/></svg>
+        {:else}
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+        {/if}
       </button>
     </div>
   </div>
