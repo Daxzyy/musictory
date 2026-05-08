@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 
+export const config = { runtime: 'nodejs20.x' };
+
 const UA = 'Mozilla/5.0 (Linux; Android 15; SM-F958 Build/AP3A.240905.015) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.86 Mobile Safari/537.36';
 const KEY = Buffer.from('C5D58EF67A7584E4A29F6C35BBC4EB12', 'hex');
 
