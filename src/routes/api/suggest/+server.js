@@ -1,3 +1,4 @@
+export const config = { runtime: 'nodejs20.x' };
 
 export async function GET({ url }) {
   const q = url.searchParams.get('q') || '';
