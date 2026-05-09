@@ -1,4 +1,3 @@
-
 import yts from 'yt-search';
 import crypto from 'crypto';
 export const config = { runtime: 'nodejs20.x' };
@@ -42,30 +41,31 @@ function isMusicVideo(v) {
 function cleanTitle(title) {
   if (!title) return title;
   return title
-    .replace(/\(\s*official\s+music\s+video\s*\)/gi, '(Official Music)')
-    .replace(/\(\s*official\s+audio\s+video\s*\)/gi, '(Official Audio)')
-    .replace(/\(\s*official\s+lyric\s+video\s*\)/gi, '(Official)')
-    .replace(/\(\s*official\s+video\s*\)/gi, '(Official)')
-    .replace(/\(\s*official\s+lyric[s]?\s*\)/gi, '(Official)')
-    .replace(/\(\s*music\s+video\s*\)/gi, '')
-    .replace(/\(\s*audio\s+video\s*\)/gi, '(Audio)')
-    .replace(/\(\s*lyric[s]?\s+video\s*\)/gi, '')
-    .replace(/\(\s*video\s+lirik\s*\)/gi, '')
-    .replace(/\(\s*lirik\s+video\s*\)/gi, '')
-    .replace(/\(\s*lirik\s*\)/gi, '')
-    .replace(/\(\s*lyric[s]?\s*\)/gi, '')
-    .replace(/\(\s*video\s*\)/gi, '')
+    .replace(/[\(\[]\s*official\s+music\s+video\s*[\)\]]/gi, '(Official Music)')
+    .replace(/[\(\[]\s*official\s+audio\s+video\s*[\)\]]/gi, '(Official Audio)')
+    .replace(/[\(\[]\s*official\s+lyric\s+video\s*[\)\]]/gi, '(Official)')
+    .replace(/[\(\[]\s*official\s+video\s*[\)\]]/gi, '(Official)')
+    .replace(/[\(\[]\s*official\s+lyric[s]?\s*[\)\]]/gi, '(Official)')
+    .replace(/[\(\[]\s*music\s+video\s*[\)\]]/gi, '')
+    .replace(/[\(\[]\s*audio\s+video\s*[\)\]]/gi, '(Audio)')
+    .replace(/[\(\[]\s*lyric[s]?\s+video\s*[\)\]]/gi, '')
+    .replace(/[\(\[]\s*video\s+lirik\s*[\)\]]/gi, '')
+    .replace(/[\(\[]\s*lirik\s+video\s*[\)\]]/gi, '')
+    .replace(/[\(\[]\s*lirik\s*[\)\]]/gi, '')
+    .replace(/[\(\[]\s*lyric[s]?\s*[\)\]]/gi, '')
+    .replace(/\(\s*lagu\s*\)/gi, '(lagu)')
+    .replace(/\[\s*lagu\s*\]/gi, '[lagu]')
+    .replace(/[\(\[]\s*video\s*[\)\]]/gi, '')
     .replace(/\baudio\s+video\b/gi, 'Audio')
     .replace(/\bmusic\s+video\b/gi, '')
     .replace(/\blyric[s]?\s+video\b/gi, '')
     .replace(/\bvideo\s+lirik\b/gi, '')
     .replace(/\blirik\s+video\b/gi, '')
-    .replace(/\s*\|\s*(?:lyric[s]?|lirik|video)\b/gi, '')
-    .replace(/\s*-\s*(?:lyric[s]?|lirik|video)\b/gi, '')
+    .replace(/\s*[\|\-]\s*(?:lyric[s]?|lirik|video|lagu)\b/gi, '')
     .replace(/\blyric[s]?\b/gi, '')
     .replace(/\blirik\b/gi, '')
     .replace(/\bvideo\b/gi, '')
-    .replace(/\(\s*\)/g, '')
+    .replace(/[\(\[]\s*[\)\]]/g, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
