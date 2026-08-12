@@ -112,7 +112,7 @@
           <button on:click={() => goto(`/album/${al.id}`)} style="background:none;border:none;cursor:pointer;text-align:left;width:130px;flex-shrink:0">
             <img src={al.cover} alt={al.title} style="width:130px;height:130px;border-radius:12px;object-fit:cover;display:block;margin-bottom:8px" loading="lazy" />
             <p style="font-size:.76rem;font-weight:700;color:#FFF6CC;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.title}</p>
-            <p style="font-size:.65rem;color:rgba(255,246,204,.4);margin:0">{al.artist}</p>
+            <p style="font-size:.65rem;color:rgba(255,246,204,.4);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.artist}</p>
           </button>
         {/each}
       </div>
@@ -128,7 +128,7 @@
           <button on:click={() => goto(`/album/${al.id}`)} style="background:none;border:none;cursor:pointer;text-align:left;width:130px;flex-shrink:0">
             <img src={al.cover} alt={al.title} style="width:130px;height:130px;border-radius:12px;object-fit:cover;display:block;margin-bottom:8px" loading="lazy" />
             <p style="font-size:.76rem;font-weight:700;color:#FFF6CC;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.title}</p>
-            <p style="font-size:.65rem;color:rgba(255,246,204,.4);margin:0">{al.artist}</p>
+            <p style="font-size:.65rem;color:rgba(255,246,204,.4);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.artist}</p>
           </button>
         {/each}
       </div>
