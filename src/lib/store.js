@@ -15,3 +15,7 @@ export const _showMenu = writable(null);
 export const _showAddPl = writable(null);
 export const _playlists = writable([]);
 export const _recentlyPlayed = writable([]);
+export const _showLyrics = writable(false);
+export const _searchTab = writable('songs');
+export const _searchAlbums = writable([]);
+export const _searchArtists = writable([]);
