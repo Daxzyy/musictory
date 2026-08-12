@@ -442,6 +442,14 @@
     _showNP.set(false);
     _setBodyLock(false);
   }
+
+  function _handleNPBack() {
+    if ($_showLyrics) {
+      _showLyrics.set(false);
+    } else {
+      _closeNP();
+    }
+  }
 </script>
 
 <audio
@@ -578,13 +586,13 @@
   background:linear-gradient(180deg,#1c1c1c 0%,#141414 100%);overflow:hidden;overscroll-behavior:contain">
 
   <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;gap:8px">
-    <button on:click={_closeNP}
+    <button on:click={_handleNPBack} aria-label={$_showLyrics ? 'Kembali ke lagu' : 'Tutup'}
       style="width:38px;height:38px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
         background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;color:rgba(255,246,204,.6)">
       <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
     </button>
     <div style="text-align:center;min-width:0;flex:1">
-      <p style="font-size:.62rem;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.14em">SEDANG DIPUTAR</p>
+      <p style="font-size:.62rem;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.14em">{$_showLyrics ? 'LIRIK' : 'SEDANG DIPUTAR'}</p>
       <p style="font-size:.68rem;font-weight:600;color:rgba(255,246,204,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px auto 0">{$_q8z.title}</p>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
