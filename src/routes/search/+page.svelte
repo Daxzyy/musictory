@@ -438,8 +438,7 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
-  }
-  @media (min-width: 560px) {
-    .song-grid { grid-template-columns: 1fr 1fr; }
+    max-width: 560px;
+    margin: 0 auto;
   }
 </style>
