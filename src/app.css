@@ -114,6 +114,11 @@ body {
   cursor: pointer;
   text-align: left;
   transform-origin: left center;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .lyric-line.active-lyric { opacity: 1 !important; color: var(--gold) !important; transform: scale(1.04) translateX(2px); text-shadow: 0 0 18px rgba(255,215,0,.35); }
 .lyric-line.past-lyric { opacity: 0.25 !important; color: rgba(255,246,204,.35) !important; }
