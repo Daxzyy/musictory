@@ -348,6 +348,19 @@
       {/if}
     </div>
 
+    {#if _artists.length > 0 && _tab === 'songs'}
+      <button on:click={() => goto(`/artist/${_artists[0].id}`)} class="glass-card animate-card-up"
+        style="width:100%;display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;
+          background:none;cursor:pointer;text-align:left;margin-bottom:14px">
+        <img src={_artists[0].cover} alt={_artists[0].title} style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,215,0,.25);flex-shrink:0" loading="lazy" />
+        <div style="flex:1;min-width:0">
+          <p style="font-size:.62rem;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.08em;margin:0 0 3px">ARTIS</p>
+          <p style="font-size:.88rem;font-weight:700;color:#FFF6CC;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{_artists[0].title}</p>
+        </div>
+        <svg width="18" height="18" fill="rgba(255,215,0,.4)" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+      </button>
+    {/if}
+
     {#if _tab === 'songs'}
       {#if _ds.length === 0}
         <div style="display:flex;align-items:center;justify-content:center;padding:40px 0">
