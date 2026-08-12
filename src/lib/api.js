@@ -41,14 +41,18 @@ function _saveCache(c) {
 }
 
 const _mem = new Map();
+const _searchMem = new Map();
 
 export async function _g9(q) {
+  if (_searchMem.has(q)) return _searchMem.get(q);
   const ts = Date.now();
   const sig = await _sign(ts, q);
   const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&ts=${ts}&sig=${sig}`);
   const j = await r.json();
-  if (!j.d || !j.iv) return [];
-  return await _decrypt(j.d, j.iv);
+  if (!j.d || !j.iv) return { query: q, totalSongs: 0, songs: [], albums: [], playlists: [], artists: [] };
+  const result = await _decrypt(j.d, j.iv);
+  _searchMem.set(q, result);
+  return result;
 }
 
 export async function _getStreamUrl(videoId) {
@@ -60,4 +64,22 @@ export async function _getStreamUrl(videoId) {
   const url = j.url || null;
   if (url) { _mem.set(videoId, url); disk[videoId] = { u: url, t: Date.now() }; _saveCache(disk); }
   return url;
+}
+
+export async function _getAlbum(id) {
+  const r = await fetch(`/api/album?id=${encodeURIComponent(id)}`);
+  const j = await r.json();
+  return j.status ? j.result : null;
+}
+
+export async function _getArtist(id) {
+  const r = await fetch(`/api/artist?id=${encodeURIComponent(id)}`);
+  const j = await r.json();
+  return j.status ? j.result : null;
+}
+
+export async function _getLyrics(title, artist) {
+  const r = await fetch(`/api/lyrics?title=${encodeURIComponent(title || '')}&artist=${encodeURIComponent(artist || '')}`);
+  const j = await r.json();
+  return j.status ? j.result.lyrics : null;
 }
