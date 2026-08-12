@@ -2,8 +2,8 @@
   import '../app.css';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { _q8z, _p1k, _x9a, _playing, _showNP, _showMenu, _showAddPl, _playlists, _recentlyPlayed, _shuffle, _repeat, _origQueue } from '$lib/store.js';
-  import { _getStreamUrl } from '$lib/api.js';
+  import { _q8z, _p1k, _x9a, _playing, _showNP, _showMenu, _showAddPl, _playlists, _recentlyPlayed, _shuffle, _repeat, _origQueue, _showLyrics } from '$lib/store.js';
+  import { _getStreamUrl, _getLyrics } from '$lib/api.js';
   import { addRecentlyPlayed, getPlaylists, addTrackToPlaylist, createPlaylist } from '$lib/playlist.js';
   import { onDestroy, onMount, tick } from 'svelte';
 
@@ -46,6 +46,45 @@
   let _swipeLocked = false;
   let _playerEl = null;
   let _swipeHoriz = false;
+
+  let _lyrics = null;
+  let _lyricsLoading = false;
+  let _lyricsTrackId = null;
+  let _lyricsWrapEl = null;
+
+  async function _loadLyrics(track) {
+    if (!track) return;
+    _lyricsLoading = true;
+    _lyrics = null;
+    try {
+      const data = await _getLyrics(track.title, track.author || track.artist || '');
+      if ($_q8z && $_q8z.videoId === track.videoId) _lyrics = data;
+    } catch { _lyrics = null; }
+    finally { _lyricsLoading = false; }
+  }
+
+  function _toggleLyrics() {
+    const next = !$_showLyrics;
+    _showLyrics.set(next);
+    if (next && $_q8z && _lyricsTrackId !== $_q8z.videoId) {
+      _lyricsTrackId = $_q8z.videoId;
+      _loadLyrics($_q8z);
+    }
+  }
+
+  $: _activeLyricIdx = (() => {
+    if (!_lyrics || _lyrics.type !== 'synced' || !_lyrics.lines?.length) return -1;
+    let idx = -1;
+    for (let i = 0; i < _lyrics.lines.length; i++) {
+      if (_lyrics.lines[i].time <= _elapsed + 0.15) idx = i; else break;
+    }
+    return idx;
+  })();
+
+  $: if (_lyricsWrapEl && _activeLyricIdx >= 0) {
+    const el = _lyricsWrapEl.querySelector(`[data-li="${_activeLyricIdx}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   let _newPlName = '';
   let _showNewPlInSheet = false;
@@ -212,6 +251,9 @@
     _pct = 0;
     _playing.set(true);
     _loadAndPlay($_q8z);
+    _lyrics = null;
+    _lyricsTrackId = null;
+    if ($_showLyrics) { _lyricsTrackId = $_q8z.videoId; _loadLyrics($_q8z); }
     addRecentlyPlayed($_q8z);
     _recentlyPlayed.set(
       (() => { try { return JSON.parse(localStorage.getItem('_msc_rp') || '[]'); } catch { return []; } })()
@@ -384,6 +426,8 @@
     _elapsed = 0; _total = 0; _pct = 0;
     _playing.set(false);
     _showNP.set(false);
+    _showLyrics.set(false);
+    _lyrics = null;
     _q8z.set(null);
     _setBodyLock(false);
   }
@@ -538,14 +582,22 @@
       <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
     </button>
     <p style="font-size:.75rem;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.1em">NOW PLAYING</p>
-    <button on:click={() => _openMenuSheet($_q8z)}
-      style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-        background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;color:rgba(255,246,204,.5)">
-      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-    </button>
+    <div style="display:flex;gap:8px">
+      <button on:click={_toggleLyrics}
+        style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:{$_showLyrics ? 'rgba(255,215,0,.18)' : 'rgba(255,215,0,.07)'};border:1px solid {$_showLyrics ? 'rgba(255,215,0,.4)' : 'rgba(255,215,0,.12)'};cursor:pointer;color:{$_showLyrics ? '#FFD700' : 'rgba(255,246,204,.5)'}">
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+      </button>
+      <button on:click={() => _openMenuSheet($_q8z)}
+        style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;color:rgba(255,246,204,.5)">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+      </button>
+    </div>
   </div>
 
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;gap:32px;overflow:hidden">
+    {#if !$_showLyrics}
     <div style="position:relative;width:min(300px,80vw);height:min(300px,80vw)">
       {#if _loading}
         <img src={$_q8z.thumbnail} alt="" style="width:100%;height:100%;border-radius:20px;object-fit:cover;display:block;border:2px solid rgba(255,215,0,.1);opacity:.4" />
@@ -559,10 +611,41 @@
       <p style="font-size:1rem;font-weight:700;color:#FFF6CC;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px">{$_q8z.title}</p>
       {#if _loading}
         <p style="font-size:.72rem;color:rgba(255,255,255,.35)">Memuat audio...</p>
+      {:else if $_q8z.artistId}
+        <button on:click={() => { _closeNP(); goto(`/artist/${$_q8z.artistId}`); }}
+          style="background:none;border:none;padding:0;font-size:.72rem;color:rgba(255,215,0,.6);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">
+          {$_q8z.author || ''}
+        </button>
       {:else}
         <p style="font-size:.72rem;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">{$_q8z.author || ''}</p>
       {/if}
     </div>
+    {:else}
+    <div bind:this={_lyricsWrapEl} class="hide-scrollbar" style="width:100%;height:min(360px,50vh);overflow-y:auto;padding:12px 4px">
+      {#if _lyricsLoading}
+        <div style="display:flex;flex-direction:column;gap:14px;padding-top:8px">
+          {#each Array(6) as _}
+            <div class="skeleton" style="height:14px;width:{60 + Math.random()*30}%;border-radius:6px"></div>
+          {/each}
+        </div>
+      {:else if !_lyrics || !_lyrics.lines?.length}
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;text-align:center">
+          <svg width="30" height="30" fill="rgba(255,215,0,.3)" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+          <p style="font-size:.8rem;color:rgba(255,246,204,.4)">Lirik tidak ditemukan</p>
+        </div>
+      {:else}
+        <div style="display:flex;flex-direction:column;gap:2px">
+          {#each _lyrics.lines as line, i (i)}
+            <p data-li={i}
+              class="lyric-line {_lyrics.type === 'synced' ? (i === _activeLyricIdx ? 'active-lyric' : (i < _activeLyricIdx ? 'past-lyric' : '')) : ''}"
+              on:click={() => { if (_lyrics.type === 'synced' && line.time >= 0 && _audioEl) { _audioEl.currentTime = line.time; _elapsed = line.time; } }}>
+              {line.text}
+            </p>
+          {/each}
+        </div>
+      {/if}
+    </div>
+    {/if}
 
     <div style="width:100%">
       <div style="position:relative;height:18px;display:flex;align-items:center;margin-bottom:8px;cursor:pointer">
