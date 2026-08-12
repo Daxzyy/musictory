@@ -1,17 +1,23 @@
 <script>
+  import { goto } from '$app/navigation';
   import { _g9 } from '$lib/api.js';
-  import { _q8z, _p1k, _x9a, _searchQuery, _searchResults, _showMenu, _playlists } from '$lib/store.js';
+  import { _q8z, _p1k, _x9a, _searchQuery, _searchResults, _showMenu, _playlists, _searchTab, _searchAlbums, _searchArtists } from '$lib/store.js';
   import { getPlaylists } from '$lib/playlist.js';
 
   let _ld = false, _t = null, _init = false;
   let _loadingId = null;
   let _qv = '';
   let _ds = [];
+  let _albums = [];
+  let _artists = [];
+  let _tab = 'songs';
   let _suggestions = [];
   let _showSug = false;
   let _sugT = null;
   let _inputEl = null;
   let _history = [];
+
+  const unsubTab = _searchTab.subscribe(v => { _tab = v; });
 
   const _HK = '_msc_sh';
   const _HM = 10;
@@ -61,7 +67,7 @@
     if (v.length > 0) _init = true;
   });
 
-  onDestroy(() => { unsubQ(); unsubR(); });
+  onDestroy(() => { unsubQ(); unsubR(); unsubTab(); });
 
   async function _fetchSuggestions(q) {
     try {
@@ -109,12 +115,16 @@
     _init = true;
     _t = setTimeout(async () => {
       try {
-        const results = await _g9(val);
-        _ds = results;
-        _searchResults.set(results);
-        _p1k.set(results);
+        const r = await _g9(val);
+        _ds = r.songs || [];
+        _albums = r.albums || [];
+        _artists = r.artists || [];
+        _searchResults.set(_ds);
+        _searchAlbums.set(_albums);
+        _searchArtists.set(_artists);
+        _p1k.set(_ds);
       } catch {
-        _ds = [];
+        _ds = []; _albums = []; _artists = [];
         _searchResults.set([]);
       } finally {
         _ld = false;
@@ -132,18 +142,24 @@
     if (_t) clearTimeout(_t);
     _t = setTimeout(async () => {
       try {
-        const results = await _g9(q);
-        _ds = results;
-        _searchResults.set(results);
-        _p1k.set(results);
+        const r = await _g9(q);
+        _ds = r.songs || [];
+        _albums = r.albums || [];
+        _artists = r.artists || [];
+        _searchResults.set(_ds);
+        _searchAlbums.set(_albums);
+        _searchArtists.set(_artists);
+        _p1k.set(_ds);
       } catch {
-        _ds = [];
+        _ds = []; _albums = []; _artists = [];
         _searchResults.set([]);
       } finally {
         _ld = false;
       }
     }, 0);
   }
+
+  function _setTab(t) { _tab = t; _searchTab.set(t); }
 
   function _onSubmit() {
     if (!_qv.trim()) return;
@@ -154,7 +170,7 @@
   function _clear() {
     _searchQuery.set('');
     _searchResults.set([]);
-    _ds = [];
+    _ds = []; _albums = []; _artists = [];
     _init = false;
     _showSug = false;
     _suggestions = { history: _history, api: [] };
@@ -304,55 +320,106 @@
       <p style="color:rgba(255,246,204,.38);font-size:.84rem">Ketik untuk mencari lagu favoritmu</p>
     </div>
 
-  {:else if _ds.length === 0}
+  {:else if _ds.length === 0 && _albums.length === 0 && _artists.length === 0}
     <div style="display:flex;align-items:center;justify-content:center;padding:60px 0">
       <p style="color:rgba(255,246,204,.45);font-size:.84rem">Tidak ada hasil untuk "<span style="color:#FFD700">{_qv}</span>"</p>
     </div>
 
   {:else}
-    <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:16px">
-      {#each _ds as item, i}
-        <div class="glass-card"
-          style="border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;
-            {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,215,0,.38);box-shadow:0 0 18px rgba(255,215,0,.13)' : ''}">
-
-          <button on:click={() => _pl(item, i)}
-            style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
-            <div style="position:relative;flex-shrink:0">
-              <img src={item.thumbnail} alt={item.title}
-                style="width:72px;height:72px;border-radius:8px;object-fit:cover;display:block" loading="lazy" />
-              {#if _loadingId === item.videoId}
-                <div style="position:absolute;inset:0;border-radius:8px;background:rgba(10,10,10,.7);display:flex;align-items:center;justify-content:center">
-                  <div class="mini-spin"></div>
-                </div>
-              {/if}
-            </div>
-            <div style="flex:1;min-width:0">
-              <p style="font-size:.84rem;font-weight:700;line-height:1.35;
-                display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-                color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:4px">
-                {item.title}
-              </p>
-              {#if item.author}
-                <p style="font-size:.72rem;font-weight:500;color:rgba(255,255,255,.4);margin:0;
-                  white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                  {item.author}
-                </p>
-              {/if}
-            </div>
-          </button>
-
-          <button on:click={e => _openMenu(e, item)}
-            style="width:32px;height:32px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
-              background:transparent;border:none;cursor:pointer;color:rgba(255,246,204,.3);transition:all .15s"
-            onmouseenter="this.style.background='rgba(255,215,0,.1)';this.style.color='rgba(255,215,0,.7)'"
-            onmouseleave="this.style.background='transparent';this.style.color='rgba(255,246,204,.3)'">
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-          </button>
-
-        </div>
-      {/each}
+    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto" class="hide-scrollbar">
+      <button on:click={() => _setTab('songs')} class="chip-tab {_tab==='songs' ? 'active' : ''}"
+        style="padding:8px 16px;border-radius:99px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.15);
+          cursor:pointer;font-size:.75rem;font-weight:700;color:rgba(255,246,204,.6);white-space:nowrap;flex-shrink:0">
+        Lagu ({_ds.length})
+      </button>
+      {#if _artists.length > 0}
+        <button on:click={() => _setTab('artists')} class="chip-tab {_tab==='artists' ? 'active' : ''}"
+          style="padding:8px 16px;border-radius:99px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.15);
+            cursor:pointer;font-size:.75rem;font-weight:700;color:rgba(255,246,204,.6);white-space:nowrap;flex-shrink:0">
+          Artis ({_artists.length})
+        </button>
+      {/if}
+      {#if _albums.length > 0}
+        <button on:click={() => _setTab('albums')} class="chip-tab {_tab==='albums' ? 'active' : ''}"
+          style="padding:8px 16px;border-radius:99px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.15);
+            cursor:pointer;font-size:.75rem;font-weight:700;color:rgba(255,246,204,.6);white-space:nowrap;flex-shrink:0">
+          Album ({_albums.length})
+        </button>
+      {/if}
     </div>
+
+    {#if _tab === 'songs'}
+      {#if _ds.length === 0}
+        <div style="display:flex;align-items:center;justify-content:center;padding:40px 0">
+          <p style="color:rgba(255,246,204,.4);font-size:.8rem">Tidak ada lagu ditemukan</p>
+        </div>
+      {:else}
+      <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:16px">
+        {#each _ds as item, i}
+          <div class="glass-card animate-card-up"
+            style="border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;animation-delay:{Math.min(i,10)*30}ms;
+              {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,215,0,.38);box-shadow:0 0 18px rgba(255,215,0,.13)' : ''}">
+
+            <button on:click={() => _pl(item, i)}
+              style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
+              <div style="position:relative;flex-shrink:0">
+                <img src={item.thumbnail} alt={item.title}
+                  style="width:72px;height:72px;border-radius:8px;object-fit:cover;display:block" loading="lazy" />
+                {#if _loadingId === item.videoId}
+                  <div style="position:absolute;inset:0;border-radius:8px;background:rgba(10,10,10,.7);display:flex;align-items:center;justify-content:center">
+                    <div class="mini-spin"></div>
+                  </div>
+                {/if}
+              </div>
+              <div style="flex:1;min-width:0">
+                <p style="font-size:.84rem;font-weight:700;line-height:1.35;
+                  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+                  color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:4px">
+                  {item.title}
+                </p>
+                {#if item.author}
+                  <p style="font-size:.72rem;font-weight:500;color:rgba(255,255,255,.4);margin:0;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    {item.author}
+                  </p>
+                {/if}
+              </div>
+            </button>
+
+            <button on:click={e => _openMenu(e, item)}
+              style="width:32px;height:32px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
+                background:transparent;border:none;cursor:pointer;color:rgba(255,246,204,.3);transition:all .15s"
+              onmouseenter="this.style.background='rgba(255,215,0,.1)';this.style.color='rgba(255,215,0,.7)'"
+              onmouseleave="this.style.background='transparent';this.style.color='rgba(255,246,204,.3)'">
+              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+            </button>
+
+          </div>
+        {/each}
+      </div>
+      {/if}
+    {:else if _tab === 'artists'}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding-bottom:16px">
+        {#each _artists as a, i}
+          <button on:click={() => goto(`/artist/${a.id}`)} class="animate-card-up"
+            style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px;animation-delay:{i*40}ms">
+            <img src={a.cover} alt={a.title} style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,215,0,.2)" loading="lazy" />
+            <span style="font-size:.72rem;font-weight:700;color:#FFF6CC;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">{a.title}</span>
+          </button>
+        {/each}
+      </div>
+    {:else if _tab === 'albums'}
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding-bottom:16px">
+        {#each _albums as al, i}
+          <button on:click={() => goto(`/album/${al.id}`)} class="glass-card animate-card-up"
+            style="border-radius:14px;padding:10px;background:none;cursor:pointer;text-align:left;animation-delay:{i*40}ms">
+            <img src={al.cover} alt={al.title} style="width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;display:block;margin-bottom:8px" loading="lazy" />
+            <p style="font-size:.78rem;font-weight:700;color:#FFF6CC;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.title}</p>
+            <p style="font-size:.68rem;color:rgba(255,246,204,.4);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.artist}</p>
+          </button>
+        {/each}
+      </div>
+    {/if}
   {/if}
 
 </div>
