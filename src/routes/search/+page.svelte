@@ -1,7 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { _g9 } from '$lib/api.js';
-  import { _q8z, _p1k, _x9a, _searchQuery, _searchResults, _showMenu, _playlists, _searchTab, _searchAlbums, _searchArtists } from '$lib/store.js';
+  import { _q8z, _p1k, _x9a, _searchQuery, _searchResults, _showMenu, _playlists, _searchTab, _searchAlbums, _searchArtists, _searchInit } from '$lib/store.js';
   import { getPlaylists } from '$lib/playlist.js';
 
   let _ld = false, _t = null, _init = false;
@@ -62,12 +62,12 @@
   });
 
   const unsubQ = _searchQuery.subscribe(v => { _qv = v; });
-  const unsubR = _searchResults.subscribe(v => {
-    _ds = v;
-    if (v.length > 0) _init = true;
-  });
+  const unsubR = _searchResults.subscribe(v => { _ds = v; });
+  const unsubAl = _searchAlbums.subscribe(v => { _albums = v; });
+  const unsubAr = _searchArtists.subscribe(v => { _artists = v; });
+  const unsubInit = _searchInit.subscribe(v => { _init = v; });
 
-  onDestroy(() => { unsubQ(); unsubR(); unsubTab(); });
+  onDestroy(() => { unsubQ(); unsubR(); unsubTab(); unsubAl(); unsubAr(); unsubInit(); });
 
   async function _fetchSuggestions(q) {
     try {
@@ -91,8 +91,11 @@
       _suggestions = { history: _history, api: [] };
       _ld = false;
       _init = false;
-      _ds = [];
+      _ds = []; _albums = []; _artists = [];
       _searchResults.set([]);
+      _searchAlbums.set([]);
+      _searchArtists.set([]);
+      _searchInit.set(false);
       if (_t) clearTimeout(_t);
       if (_sugT) clearTimeout(_sugT);
       return;
@@ -113,6 +116,7 @@
     if (_t) clearTimeout(_t);
     _ld = true;
     _init = true;
+    _searchInit.set(true);
     _t = setTimeout(async () => {
       try {
         const r = await _g9(val);
@@ -126,6 +130,8 @@
       } catch {
         _ds = []; _albums = []; _artists = [];
         _searchResults.set([]);
+        _searchAlbums.set([]);
+        _searchArtists.set([]);
       } finally {
         _ld = false;
       }
@@ -139,6 +145,7 @@
     _saveHistory(q);
     _ld = true;
     _init = true;
+    _searchInit.set(true);
     if (_t) clearTimeout(_t);
     _t = setTimeout(async () => {
       try {
@@ -153,6 +160,8 @@
       } catch {
         _ds = []; _albums = []; _artists = [];
         _searchResults.set([]);
+        _searchAlbums.set([]);
+        _searchArtists.set([]);
       } finally {
         _ld = false;
       }
@@ -170,6 +179,9 @@
   function _clear() {
     _searchQuery.set('');
     _searchResults.set([]);
+    _searchAlbums.set([]);
+    _searchArtists.set([]);
+    _searchInit.set(false);
     _ds = []; _albums = []; _artists = [];
     _init = false;
     _showSug = false;
@@ -454,4 +466,8 @@
     max-width: 560px;
     margin: 0 auto;
   }
+  /* Grid items default to min-width:auto, which lets long unbroken titles
+     force the track (and page) wider than the viewport. Force them to
+     respect the track width so ellipsis/line-clamp on children can work. */
+  .song-grid > * { min-width: 0; }
 </style>
