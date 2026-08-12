@@ -19,3 +19,4 @@ export const _showLyrics = writable(false);
 export const _searchTab = writable('songs');
 export const _searchAlbums = writable([]);
 export const _searchArtists = writable([]);
+export const _searchInit = writable(false);
