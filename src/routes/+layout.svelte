@@ -629,7 +629,7 @@
       {/if}
     </div>
     {:else}
-    <div bind:this={_lyricsWrapEl} class="hide-scrollbar" style="width:100%;height:min(360px,50vh);overflow-y:auto;padding:12px 4px">
+    <div bind:this={_lyricsWrapEl} class="hide-scrollbar" style="width:100%;height:min(360px,50vh);overflow-y:auto;overflow-x:hidden;padding:12px 4px;box-sizing:border-box">
       {#if _lyricsLoading}
         <div style="display:flex;flex-direction:column;gap:14px;padding-top:8px">
           {#each Array(6) as _}
