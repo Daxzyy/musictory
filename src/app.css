@@ -114,7 +114,8 @@ body {
   cursor: pointer;
   text-align: left;
   transform-origin: left center;
-  width: 100%;
+  width: 94%;
+  max-width: 94%;
   box-sizing: border-box;
   white-space: normal;
   overflow-wrap: break-word;
