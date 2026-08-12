@@ -254,7 +254,7 @@
     _loadAndPlay($_q8z);
     _lyrics = null;
     _lyricsTrackId = null;
-    if ($_showLyrics) { _lyricsTrackId = $_q8z.videoId; _loadLyrics($_q8z); }
+    _showLyrics.set(false);
     addRecentlyPlayed($_q8z);
     _recentlyPlayed.set(
       (() => { try { return JSON.parse(localStorage.getItem('_msc_rp') || '[]'); } catch { return []; } })()
