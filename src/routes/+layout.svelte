@@ -32,6 +32,7 @@
   }
 
   let _elapsed = 0;
+  let _lyricT = 0;
   let _total = 0;
   let _pct = 0;
   let _ticker = null;
@@ -76,7 +77,7 @@
     if (!_lyrics || _lyrics.type !== 'synced' || !_lyrics.lines?.length) return -1;
     let idx = -1;
     for (let i = 0; i < _lyrics.lines.length; i++) {
-      if (_lyrics.lines[i].time <= _elapsed + 0.15) idx = i; else break;
+      if (_lyrics.lines[i].time <= _lyricT) idx = i; else break;
     }
     return idx;
   })();
@@ -449,6 +450,7 @@
   on:ended={_nxt}
   on:play={() => { if (!_loading) _playing.set(true); }}
   on:pause={() => { if (!_loading) _playing.set(false); }}
+  on:timeupdate={() => { if (_audioEl) _lyricT = _audioEl.currentTime || 0; }}
 ></audio>
 
 <div style="padding-bottom:{$_q8z ? '11rem' : '4.5rem'}">
@@ -608,7 +610,7 @@
     </div>
 
     <div style="text-align:center;width:100%">
-      <p style="font-size:1rem;font-weight:700;color:#FFF6CC;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px">{$_q8z.title}</p>
+      <p style="font-size:1.05rem;font-weight:700;color:#FFF6CC;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px">{$_q8z.title}</p>
       {#if _loading}
         <p style="font-size:.72rem;color:rgba(255,255,255,.35)">Memuat audio...</p>
       {:else if $_q8z.artistId}
@@ -638,7 +640,7 @@
           {#each _lyrics.lines as line, i (i)}
             <p data-li={i}
               class="lyric-line {_lyrics.type === 'synced' ? (i === _activeLyricIdx ? 'active-lyric' : (i < _activeLyricIdx ? 'past-lyric' : '')) : ''}"
-              on:click={() => { if (_lyrics.type === 'synced' && line.time >= 0 && _audioEl) { _audioEl.currentTime = line.time; _elapsed = line.time; } }}>
+              on:click={() => { if (_lyrics.type === 'synced' && line.time >= 0 && _audioEl) { _audioEl.currentTime = line.time; _elapsed = line.time; _lyricT = line.time; } }}>
               {line.text}
             </p>
           {/each}
