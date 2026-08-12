@@ -585,14 +585,9 @@
     </button>
     <div style="text-align:center;min-width:0;flex:1">
       <p style="font-size:.62rem;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.14em">SEDANG DIPUTAR</p>
-      <p style="font-size:.68rem;font-weight:600;color:rgba(255,246,204,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px auto 0">{$_q8z.author || ''}</p>
+      <p style="font-size:.68rem;font-weight:600;color:rgba(255,246,204,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px auto 0">{$_q8z.title}</p>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
-      <button on:click={_toggleLyrics}
-        style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-          background:{$_showLyrics ? 'rgba(255,215,0,.18)' : 'rgba(255,215,0,.07)'};border:1px solid {$_showLyrics ? 'rgba(255,215,0,.4)' : 'rgba(255,215,0,.12)'};cursor:pointer;color:{$_showLyrics ? '#FFD700' : 'rgba(255,246,204,.5)'}">
-        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
-      </button>
       <button on:click={() => _openMenuSheet($_q8z)}
         style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
           background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.12);cursor:pointer;color:rgba(255,246,204,.5)">
@@ -612,25 +607,18 @@
       {/if}
     </div>
 
-    <div style="width:100%;display:flex;align-items:center;gap:14px">
-      <div style="flex:1;min-width:0;text-align:left">
-        <p style="font-size:1.15rem;font-weight:800;color:#FFF6CC;line-height:1.28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px">{$_q8z.title}</p>
-        {#if _loading}
-          <p style="font-size:.75rem;color:rgba(255,255,255,.35)">Memuat audio...</p>
-        {:else if $_q8z.artistId}
-          <button on:click={() => { _closeNP(); goto(`/artist/${$_q8z.artistId}`); }}
-            style="background:none;border:none;padding:0;font-size:.78rem;font-weight:500;color:rgba(255,215,0,.6);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:left;display:block">
-            {$_q8z.author || ''}
-          </button>
-        {:else}
-          <p style="font-size:.78rem;font-weight:500;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin:0">{$_q8z.author || ''}</p>
-        {/if}
-      </div>
-      <button on:click={() => _openMenuSheet($_q8z)}
-        style="width:42px;height:42px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
-          background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.15);cursor:pointer;color:rgba(255,215,0,.7)">
-        <svg width="19" height="19" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-      </button>
+    <div style="text-align:center;width:100%">
+      <p style="font-size:1.1rem;font-weight:800;color:#FFF6CC;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px">{$_q8z.title}</p>
+      {#if _loading}
+        <p style="font-size:.75rem;color:rgba(255,255,255,.35)">Memuat audio...</p>
+      {:else if $_q8z.artistId}
+        <button on:click={() => { _closeNP(); goto(`/artist/${$_q8z.artistId}`); }}
+          style="background:none;border:none;padding:0;font-size:.78rem;font-weight:500;color:rgba(255,215,0,.6);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">
+          {$_q8z.author || ''}
+        </button>
+      {:else}
+        <p style="font-size:.78rem;font-weight:500;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin:0">{$_q8z.author || ''}</p>
+      {/if}
     </div>
     {:else}
     <div bind:this={_lyricsWrapEl} class="hide-scrollbar" style="width:100%;height:min(360px,50vh);overflow-y:auto;padding:12px 4px">
@@ -750,6 +738,18 @@
       </div>
 
       <div style="padding:14px 20px 0">
+        {#if $_showMenu.videoId === $_q8z?.videoId}
+          <button on:click={() => { _closeMenuSheet(); _showNP.set(true); if (!$_showLyrics) _toggleLyrics(); }}
+            style="width:100%;display:flex;align-items:center;gap:12px;padding:0 0 14px;
+              background:none;border:none;border-bottom:1px solid rgba(255,215,0,.08);cursor:pointer;text-align:left;margin-bottom:14px">
+            <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
+              background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.15);
+              display:flex;align-items:center;justify-content:center">
+              <svg width="18" height="18" fill="rgba(255,215,0,.7)" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+            </div>
+            <span style="font-size:.82rem;font-weight:700;color:rgba(255,246,204,.8)">Lihat Lirik</span>
+          </button>
+        {/if}
         <p style="font-size:.65rem;font-weight:700;color:rgba(255,215,0,.4);letter-spacing:.1em;margin:0 0 12px">TAMBAH KE PLAYLIST</p>
 
         <button on:click={() => { _pendingTrack = $_showMenu; _showMenu.set(null); _showNewPlModal = true; _newPlName = ''; }}
