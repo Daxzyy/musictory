@@ -27,8 +27,8 @@
       const results = await Promise.all(picked.map(q => _g9(q)));
       const seen = new Set();
       const merged = [];
-      for (const list of results) {
-        for (const item of list) {
+      for (const r of results) {
+        for (const item of (r.songs || [])) {
           if (!seen.has(item.videoId)) { seen.add(item.videoId); merged.push(item); }
         }
       }
@@ -127,8 +127,8 @@
   {:else}
     <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:8px">
       {#each _ds as item, i}
-        <div class="glass-card"
-          style="border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;
+        <div class="glass-card animate-card-up"
+          style="border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;animation-delay:{Math.min(i,10)*35}ms;
             {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,215,0,.38);box-shadow:0 0 18px rgba(255,215,0,.13)' : ''}">
 
           <button on:click={() => _pl(item, i)}
@@ -153,10 +153,18 @@
                 {item.title}
               </p>
               {#if item.author}
-                <p style="font-size:.72rem;font-weight:500;color:rgba(255,255,255,.4);margin:0;
-                  white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                  {item.author}
-                </p>
+                {#if item.artistId}
+                  <span role="link" tabindex="0" on:click|stopPropagation={() => goto(`/artist/${item.artistId}`)} on:keydown={() => {}}
+                    style="font-size:.72rem;font-weight:500;color:rgba(255,215,0,.55);margin:0;cursor:pointer;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">
+                    {item.author}
+                  </span>
+                {:else}
+                  <p style="font-size:.72rem;font-weight:500;color:rgba(255,255,255,.4);margin:0;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    {item.author}
+                  </p>
+                {/if}
               {/if}
             </div>
           </button>
