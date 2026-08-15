@@ -1,11 +1,11 @@
 {
-  "name": "Musictory",
-  "short_name": "Musictory",
-  "description": "Cari lagu, nikmati lagunya🥰",
+  "name": "Ganify",
+  "short_name": "Ganify",
+  "description": "Cari lagu apa aja ygy😈",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0A0A0A",
-  "theme_color": "#FFD700",
+  "theme_color": "#FFFFFF",
   "start_url": "/",
   "scope": "/",
   "icons": [
