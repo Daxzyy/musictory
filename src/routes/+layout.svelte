@@ -58,7 +58,10 @@
     _lyricsLoading = true;
     _lyrics = null;
     try {
-      const data = await _getLyrics(track.title, track.author || track.artist || '', _dur2s(track.duration));
+      const accurateDuration = (_audioEl && $_q8z && $_q8z.videoId === track.videoId && isFinite(_audioEl.duration) && _audioEl.duration > 0)
+        ? Math.floor(_audioEl.duration)
+        : _dur2s(track.duration);
+      const data = await _getLyrics(track.title, track.author || track.artist || '', accurateDuration);
       if ($_q8z && $_q8z.videoId === track.videoId) _lyrics = data;
     } catch { _lyrics = null; }
     finally { _lyricsLoading = false; }
