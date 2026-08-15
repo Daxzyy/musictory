@@ -95,148 +95,6 @@ function normalizeQuery(q) {
   return String(q || '').trim().replace(/\s+/g, ' ');
 }
 
-function tokenize(q) {
-  return normalizeQuery(q)
-    .toLowerCase()
-    .split(/[^a-z0-9\u00c0-\u024f]+/i)
-    .filter(Boolean);
-}
-
-function relevanceScore(fields, tokens) {
-  if (!tokens.length) return 0;
-  const haystack = fields.filter(Boolean).join(' ').toLowerCase();
-  if (!haystack) return 0;
-  let matched = 0;
-  for (const t of tokens) if (haystack.includes(t)) matched++;
-  let score = matched / tokens.length;
-  if (matched === tokens.length) score += 1;
-  if (tokens.length > 1 && haystack.includes(tokens.join(' '))) score += 0.5;
-  return score;
-}
-
-function rankByRelevance(list, tokens, fieldsFn) {
-  if (!tokens.length) return list;
-  return list
-    .map((item, i) => ({ item, i, score: relevanceScore(fieldsFn(item), tokens) }))
-    .sort((a, b) => (b.score - a.score) || (a.i - b.i))
-    .map(x => x.item);
-}
-
-const SONG_WEIGHT_TITLE = 3;
-const SONG_WEIGHT_ARTIST = 1.6;
-const SONG_WEIGHT_ALBUM = 1;
-const SONG_WEIGHT_LYRICS = 2.4;
-const SONG_WEIGHT_TOP_RESULT = 5;
-const SONG_WEIGHT_ARTIST_AFFINITY = 2.5;
-
-function matchesAffinity(song, affinity) {
-  if (!affinity) return false;
-  if (affinity.artistId && song.artistId && song.artistId === affinity.artistId) return true;
-  if (affinity.artistName && normalizeCompare(song.artist) === normalizeCompare(affinity.artistName)) return true;
-  return false;
-}
-
-function songRelevanceScore(song, tokens, lyricSignals, affinity) {
-  if (!tokens.length) return 0;
-  const titleScore = relevanceScore([song.title], tokens);
-  const artistScore = relevanceScore([song.artist], tokens);
-  const albumScore = relevanceScore([song.album], tokens);
-  const lyricsScore = lyricSignals.get(song.videoId) || 0;
-  const topResultScore = song.isTopResult ? 1 : 0;
-  const affinityScore = matchesAffinity(song, affinity) ? 1 : 0;
-  return titleScore * SONG_WEIGHT_TITLE
-    + artistScore * SONG_WEIGHT_ARTIST
-    + albumScore * SONG_WEIGHT_ALBUM
-    + lyricsScore * SONG_WEIGHT_LYRICS
-    + topResultScore * SONG_WEIGHT_TOP_RESULT
-    + affinityScore * SONG_WEIGHT_ARTIST_AFFINITY;
-}
-
-function rankSongsByRelevance(songs, tokens, lyricSignals, affinity) {
-  if (!tokens.length) return songs;
-  return songs
-    .map((item, i) => ({ item, i, score: songRelevanceScore(item, tokens, lyricSignals, affinity) }))
-    .sort((a, b) => (b.score - a.score) || (a.i - b.i))
-    .map(x => x.item);
-}
-
-const LYRIC_CHECK_LIMIT = 16;
-const LYRIC_FETCH_TIMEOUT = 2000;
-
-async function fetchJsonWithTimeout(url, ms) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: controller.signal });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function lyricsTextOf(entry) {
-  return String(entry?.plainLyrics || entry?.syncedLyrics || '');
-}
-
-function normalizeForMatch(text) {
-  return String(text || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\u00c0-\u024f\s]/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function phraseMatchScore(haystack, tokens) {
-  if (!haystack || tokens.length < 2) return 0;
-  const fullPhrase = tokens.join(' ');
-  if (haystack.includes(fullPhrase)) return 1;
-  let bestRun = 0;
-  for (let start = 0; start < tokens.length - 1; start++) {
-    for (let len = tokens.length - start; len >= 2; len--) {
-      const sub = tokens.slice(start, start + len).join(' ');
-      if (haystack.includes(sub)) { bestRun = Math.max(bestRun, len); break; }
-    }
-  }
-  return bestRun >= 2 ? bestRun / tokens.length : 0;
-}
-
-async function fetchSongLyricScore(song, tokens) {
-  if (tokens.length < 2) return 0;
-  const trackName = encodeURIComponent(song.title || '');
-  const artistName = encodeURIComponent(song.artist || '');
-  if (!trackName) return 0;
-  const data = await fetchJsonWithTimeout(
-    `https://lrclib.net/api/search?track_name=${trackName}&artist_name=${artistName}`,
-    LYRIC_FETCH_TIMEOUT
-  );
-  if (!Array.isArray(data) || data.length === 0) return 0;
-  const text = normalizeForMatch(lyricsTextOf(data[0]));
-  if (!text) return 0;
-  return phraseMatchScore(text, tokens);
-}
-
-async function buildLyricSignals(songs, tokens) {
-  const signals = new Map();
-  if (tokens.length < 2 || songs.length === 0) return signals;
-  const seen = new Set();
-  const candidates = [];
-  for (const s of songs) {
-    const key = `${(s.title || '').toLowerCase()}|${(s.artist || '').toLowerCase()}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    candidates.push(s);
-    if (candidates.length >= LYRIC_CHECK_LIMIT) break;
-  }
-  const results = await Promise.allSettled(candidates.map(s => fetchSongLyricScore(s, tokens)));
-  candidates.forEach((s, i) => {
-    const r = results[i];
-    signals.set(s.videoId, r.status === 'fulfilled' ? r.value : 0);
-  });
-  return signals;
-}
 
 function extractRows(data) {
   if (!data) return [];
@@ -282,49 +140,6 @@ function rowsToAlbumsAndPlaylists(rows) {
     else if (subtitle.toLowerCase().includes('playlist')) playlists.push({ id: browseId, title, artist: subtitle, cover: thumb });
   }
   return { albums, playlists };
-}
-
-function extractTopResultSong(data) {
-  if (!data) return null;
-  const cards = [];
-  findAllKeys(data, 'musicCardShelfRenderer', cards);
-  if (!cards.length) return null;
-  const card = cards[0];
-  const videoId =
-    card?.onTap?.watchEndpoint?.videoId ||
-    card?.buttons?.[0]?.buttonRenderer?.navigationEndpoint?.watchEndpoint?.videoId ||
-    card?.title?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId || '';
-  if (!videoId) return null;
-  const subRuns = card?.subtitle?.runs || [];
-  const subtitleText = getRunsText(subRuns).toLowerCase();
-  const excludedTypes = ['artist', 'artis', 'album', 'playlist', 'profil', 'profile', 'podcast', 'episode'];
-  if (excludedTypes.some(t => subtitleText.includes(t))) return null;
-  const title = getRunsText(card?.title?.runs);
-  let artist = '', artistId = '';
-  for (const run of subRuns) {
-    const browseId = run?.navigationEndpoint?.browseEndpoint?.browseId || '';
-    if (browseId.startsWith('UC')) { artist = run.text || ''; artistId = browseId; break; }
-  }
-  if (!artist) {
-    const parts = getRunsText(subRuns).split('•').map(s => s.trim()).filter(Boolean);
-    artist = parts.length > 1 ? parts[1] : '';
-  }
-  const accLabel = card?.subtitle?.accessibility?.accessibilityData?.label || '';
-  const duration = durationToColon(accLabel) || durationToColon(subtitleText);
-  const thumbs = card?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
-  const thumbnail = toHDThumbnail(thumbs.length ? thumbs[thumbs.length - 1].url : '', videoId);
-  return {
-    title: cleanTitle(title),
-    videoId,
-    thumbnail,
-    duration,
-    author: artist,
-    artist,
-    artistId,
-    album: '',
-    albumId: '',
-    isTopResult: true
-  };
 }
 
 function extractSongRows(data) {
@@ -387,99 +202,29 @@ function dedupeBy(list, keyFn) {
   return out;
 }
 
-function normalizeCompare(text) {
-  return String(text || '').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/gi, ' ').trim();
-}
-
-function findMatchingSong(pool, title, artist) {
-  const t = normalizeCompare(title);
-  const a = normalizeCompare(artist);
-  if (!t) return null;
-  const exact = pool.find(s => normalizeCompare(s.title) === t && normalizeCompare(s.artist) === a);
-  if (exact) return exact;
-  return pool.find(s => normalizeCompare(s.title) === t) || null;
-}
-
-async function fetchCanonicalSongVersion(title, artist) {
-  const q = `${title || ''} ${artist || ''}`.trim();
-  if (!q) return null;
-  const data = await fetchYoutube(q, 'songs').catch(() => null);
-  const rows = extractSongRows(data);
-  return findMatchingSong(rows, title, artist);
-}
-
-async function fetchArtistCatalog(artistName) {
-  if (!artistName) return [];
-  const data = await fetchYoutube(artistName, 'songs').catch(() => null);
-  return extractSongRows(data);
-}
-
-const MIN_MATCH_RATIO = 0.5;
-
 async function performSearch(rawQuery) {
   const query = normalizeQuery(rawQuery);
-  const tokens = tokenize(query);
 
-  const [songsData, playlistsData, artistsData, allData] = await Promise.all([
+  // Fetch each category the same way ArcelMusic / the original API does:
+  // one YT Music Remix request per type, results kept in the exact order
+  // YT Music's own ranking returns them in. No client-side re-scoring.
+  const [songsData, playlistsData, artistsData] = await Promise.all([
     fetchYoutube(query, 'songs').catch(() => null),
     fetchYoutube(query, 'playlists').catch(() => null),
-    fetchYoutube(query, 'artists').catch(() => null),
-    fetchYoutube(query, 'all').catch(() => null)
+    fetchYoutube(query, 'artists').catch(() => null)
   ]);
 
-  let songs = extractSongRows(songsData);
-  let artists = rowsToArtists(extractRows(artistsData));
+  const songs = dedupeBy(extractSongRows(songsData), s => s.videoId);
+  const artists = dedupeBy(rowsToArtists(extractRows(artistsData)), a => a.id);
   const { albums, playlists } = rowsToAlbumsAndPlaylists(extractRows(playlistsData));
-
-  if (tokens.length > 1) {
-    const seedToken = tokens[0];
-
-    if (artists.length === 0) {
-      const retryData = await fetchYoutube(seedToken, 'artists').catch(() => null);
-      const candidates = rowsToArtists(extractRows(retryData));
-      artists = candidates.filter(a => relevanceScore([a.title, a.artist], tokens) >= MIN_MATCH_RATIO * tokens.length);
-    }
-
-    if (songs.length === 0) {
-      const retryData = await fetchYoutube(seedToken, 'songs').catch(() => null);
-      const candidates = extractSongRows(retryData);
-      songs = candidates.filter(s => relevanceScore([s.title, s.artist, s.album], tokens) >= MIN_MATCH_RATIO * tokens.length);
-    }
-  }
-
-  const topResultCard = extractTopResultSong(allData);
-  const allTabSongs = extractSongRows(allData);
-  const candidatePool = [...songs, ...allTabSongs];
-  let topResultSong = null;
-  if (topResultCard) {
-    let canonical = findMatchingSong(candidatePool, topResultCard.title, topResultCard.artist);
-    if (!canonical) canonical = await fetchCanonicalSongVersion(topResultCard.title, topResultCard.artist);
-    topResultSong = canonical ? { ...canonical, isTopResult: true } : topResultCard;
-  }
-
-  let affinity = null;
-  let artistCatalogSongs = [];
-  if (topResultSong && topResultSong.isTopResult && topResultSong.artist) {
-    affinity = { artistId: topResultSong.artistId || '', artistName: topResultSong.artist };
-    artistCatalogSongs = await fetchArtistCatalog(topResultSong.artist);
-  }
-
-  songs = dedupeBy([...(topResultSong ? [topResultSong] : []), ...songs, ...allTabSongs, ...artistCatalogSongs], s => s.videoId);
-
-  const lyricSignals = await buildLyricSignals(songs, tokens);
-  songs = rankSongsByRelevance(songs, tokens, lyricSignals, affinity);
-
-  artists = rankByRelevance(dedupeBy(artists, a => a.id), tokens, a => [a.title]);
-  const rankedAlbums = rankByRelevance(dedupeBy(albums, a => a.id), tokens, a => [a.title, a.artist]);
-  const rankedPlaylists = rankByRelevance(dedupeBy(playlists, p => p.id), tokens, p => [p.title, p.artist]);
 
   return {
     query,
     totalSongs: songs.length,
-    songs: songs.slice(0, 40),
-    albums: rankedAlbums.slice(0, 12),
-    playlists: rankedPlaylists.slice(0, 12),
-    artists: artists.slice(0, 10)
+    songs,
+    albums: dedupeBy(albums, a => a.id),
+    playlists: dedupeBy(playlists, p => p.id),
+    artists
   };
 }
 
