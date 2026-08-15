@@ -223,8 +223,29 @@ function dedupeBy(list, keyFn) {
   return out;
 }
 
+const SEARCH_CACHE_TTL = 60 * 1000;
+const SEARCH_CACHE_MAX = 200;
+const _searchCache = new Map();
+
+function _cacheGet(key) {
+  const entry = _searchCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.t > SEARCH_CACHE_TTL) { _searchCache.delete(key); return null; }
+  return entry.v;
+}
+function _cacheSet(key, v) {
+  _searchCache.set(key, { v, t: Date.now() });
+  if (_searchCache.size > SEARCH_CACHE_MAX) {
+    const oldestKey = _searchCache.keys().next().value;
+    _searchCache.delete(oldestKey);
+  }
+}
+
 async function performSearch(rawQuery) {
   const query = normalizeQuery(rawQuery);
+
+  const cached = _cacheGet(query);
+  if (cached) return cached;
 
   // Fetch each category the same way ArcelMusic / the original API does:
   // one YT Music Remix request per type, results kept in the exact order
@@ -239,7 +260,7 @@ async function performSearch(rawQuery) {
   const artists = dedupeBy(rowsToArtists(extractRows(artistsData)), a => a.id);
   const { albums, playlists } = rowsToAlbumsAndPlaylists(extractRows(playlistsData));
 
-  return {
+  const result = {
     query,
     totalSongs: songs.length,
     songs,
@@ -247,6 +268,9 @@ async function performSearch(rawQuery) {
     playlists: dedupeBy(playlists, p => p.id),
     artists
   };
+
+  _cacheSet(query, result);
+  return result;
 }
 
 export async function GET({ url, request }) {
