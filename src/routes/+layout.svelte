@@ -58,7 +58,7 @@
     _lyricsLoading = true;
     _lyrics = null;
     try {
-      const data = await _getLyrics(track.title, track.author || track.artist || '');
+      const data = await _getLyrics(track.title, track.author || track.artist || '', _dur2s(track.duration));
       if ($_q8z && $_q8z.videoId === track.videoId) _lyrics = data;
     } catch { _lyrics = null; }
     finally { _lyricsLoading = false; }
@@ -221,12 +221,25 @@
       if (_audioEl) _audioEl.currentTime = Math.min(_total, _audioEl.currentTime + 10);
     });
     navigator.mediaSession.playbackState = 'playing';
+    _updatePositionState();
   }
 
+  // Guards against the two things that make the OS notification's progress
+  // bar look "full" or stuck: (1) calling setPositionState with duration <= 0
+  // - some platforms render an unknown/zero duration as a full bar instead of
+  // an empty one, and (2) position ever exceeding duration, which some
+  // browsers reject outright (leaving the previous track's state on screen).
+  // When duration isn't known yet, we explicitly clear the position state
+  // instead of pushing bogus 0/0 values.
   function _updatePositionState() {
     if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
     try {
-      navigator.mediaSession.setPositionState({ duration: _total || 0, playbackRate: 1, position: _elapsed });
+      if (!_total || !isFinite(_total) || _total <= 0) {
+        navigator.mediaSession.setPositionState();
+        return;
+      }
+      const position = Math.min(Math.max(_elapsed, 0), _total);
+      navigator.mediaSession.setPositionState({ duration: _total, playbackRate: 1, position });
     } catch(_) {}
   }
 
@@ -244,7 +257,26 @@
       _total = Math.floor(d);
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
       _syncSeekEls(_pct);
+      _updatePositionState();
     }
+  }
+
+  // Fires far more often than the 1s ticker (browsers dispatch timeupdate
+  // roughly 4x/sec), so this is the primary source of truth for the visible
+  // progress bar and the OS notification's live position - the ticker below
+  // is just a safety net in case timeupdate stalls.
+  function _onTimeUpdate() {
+    if (!_audioEl) return;
+    _lyricT = _audioEl.currentTime || 0;
+    if (_seeking) return;
+    if (isFinite(_audioEl.duration) && _audioEl.duration > 0) {
+      _total = Math.floor(_audioEl.duration);
+    }
+    _elapsed = Math.floor(_audioEl.currentTime);
+    if (_total > 0 && _elapsed > _total) _elapsed = _total;
+    _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
+    _syncSeekEls(_pct);
+    _updatePositionState();
   }
 
   function _stopTick() {
@@ -337,19 +369,13 @@
 
   function _startTick() {
     if (_ticker) clearInterval(_ticker);
+    // Safety net only: timeupdate normally keeps everything in sync in
+    // real-time, but some platforms throttle/pause timeupdate (e.g.
+    // backgrounded tabs), so this makes sure the notification never goes
+    // stale for long.
     _ticker = setInterval(() => {
       if (!$_playing || !_audioEl || _seeking) return;
-      if (isFinite(_audioEl.duration) && _audioEl.duration > 0) {
-        _total = Math.floor(_audioEl.duration);
-      }
-      _elapsed = Math.floor(_audioEl.currentTime);
-      // Defensive clamp: never let the displayed position exceed the
-      // displayed total, even for a single tick (e.g. rounding at the
-      // very end of a track before 'ended' fires).
-      if (_total > 0 && _elapsed > _total) _elapsed = _total;
-      _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
-      _syncSeekEls(_pct);
-      _updatePositionState();
+      _onTimeUpdate();
     }, 1000);
   }
 
@@ -502,7 +528,7 @@
   on:pause={() => { if (!_loading) _playing.set(false); }}
   on:loadedmetadata={_onDurationKnown}
   on:durationchange={_onDurationKnown}
-  on:timeupdate={() => { if (_audioEl) _lyricT = _audioEl.currentTime || 0; }}
+  on:timeupdate={_onTimeUpdate}
 ></audio>
 
 <div style="padding-bottom:{$_q8z ? '11rem' : '4.5rem'}">
