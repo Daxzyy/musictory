@@ -192,6 +192,32 @@
     _swipeDeltaY = 0;
   }
 
+  let _lastPosPush = 0;
+
+  function _clearPositionState() {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+    try { navigator.mediaSession.setPositionState(); } catch(_) {}
+    _lastPosPush = 0;
+  }
+
+  function _updatePositionState(force) {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+    const now = Date.now();
+    if (!force && now - _lastPosPush < 800) return;
+    const liveDuration = _audioEl && isFinite(_audioEl.duration) && _audioEl.duration > 0 ? _audioEl.duration : _total;
+    const liveElapsed = _audioEl && isFinite(_audioEl.currentTime) ? _audioEl.currentTime : _elapsed;
+    try {
+      if (!liveDuration || !isFinite(liveDuration) || liveDuration <= 0) {
+        navigator.mediaSession.setPositionState();
+        _lastPosPush = now;
+        return;
+      }
+      const position = Math.min(Math.max(liveElapsed, 0), liveDuration);
+      navigator.mediaSession.setPositionState({ duration: liveDuration, playbackRate: 1, position });
+      _lastPosPush = now;
+    } catch(_) {}
+  }
+
   function _setMediaSession(track) {
     if (!('mediaSession' in navigator)) return;
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -206,50 +232,28 @@
       if (_audioEl) _audioEl.play().catch(() => {});
       _playing.set(true);
       navigator.mediaSession.playbackState = 'playing';
+      _updatePositionState(true);
     });
     navigator.mediaSession.setActionHandler('pause', () => {
       if (_audioEl) _audioEl.pause();
       _playing.set(false);
       navigator.mediaSession.playbackState = 'paused';
+      _updatePositionState(true);
     });
     navigator.mediaSession.setActionHandler('previoustrack', () => _prv());
     navigator.mediaSession.setActionHandler('nexttrack', () => _nxt());
     navigator.mediaSession.setActionHandler('seekbackward', () => {
       if (_audioEl) _audioEl.currentTime = Math.max(0, _audioEl.currentTime - 10);
+      _updatePositionState(true);
     });
     navigator.mediaSession.setActionHandler('seekforward', () => {
       if (_audioEl) _audioEl.currentTime = Math.min(_total, _audioEl.currentTime + 10);
+      _updatePositionState(true);
     });
     navigator.mediaSession.playbackState = 'playing';
-    _updatePositionState();
+    _updatePositionState(true);
   }
 
-  // Guards against the two things that make the OS notification's progress
-  // bar look "full" or stuck: (1) calling setPositionState with duration <= 0
-  // - some platforms render an unknown/zero duration as a full bar instead of
-  // an empty one, and (2) position ever exceeding duration, which some
-  // browsers reject outright (leaving the previous track's state on screen).
-  // When duration isn't known yet, we explicitly clear the position state
-  // instead of pushing bogus 0/0 values.
-  function _updatePositionState() {
-    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
-    try {
-      if (!_total || !isFinite(_total) || _total <= 0) {
-        navigator.mediaSession.setPositionState();
-        return;
-      }
-      const position = Math.min(Math.max(_elapsed, 0), _total);
-      navigator.mediaSession.setPositionState({ duration: _total, playbackRate: 1, position });
-    } catch(_) {}
-  }
-
-  // The real audio element's own duration is the only source of truth for
-  // "how long is this track". Metadata-derived duration (from search results)
-  // is just a rounded estimate used before playback starts, and can be a few
-  // seconds shorter than the actual stream — which is what let currentTime
-  // (_elapsed) drift past the displayed total (e.g. "3:09 / 3:00"). Sync
-  // _total from _audioEl.duration the moment it's known, not just once a
-  // second from the ticker.
   function _onDurationKnown() {
     if (!_audioEl) return;
     const d = _audioEl.duration;
@@ -257,14 +261,10 @@
       _total = Math.floor(d);
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
       _syncSeekEls(_pct);
-      _updatePositionState();
+      _updatePositionState(true);
     }
   }
 
-  // Fires far more often than the 1s ticker (browsers dispatch timeupdate
-  // roughly 4x/sec), so this is the primary source of truth for the visible
-  // progress bar and the OS notification's live position - the ticker below
-  // is just a safety net in case timeupdate stalls.
   function _onTimeUpdate() {
     if (!_audioEl) return;
     _lyricT = _audioEl.currentTime || 0;
@@ -276,24 +276,16 @@
     if (_total > 0 && _elapsed > _total) _elapsed = _total;
     _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
     _syncSeekEls(_pct);
-    _updatePositionState();
+    _updatePositionState(false);
   }
 
   function _stopTick() {
     if (_ticker) { clearInterval(_ticker); _ticker = null; }
   }
 
-  // Called the instant a track switch is detected, before the async stream
-  // fetch even starts. Without this, the previous track's ticker interval
-  // keeps running until _startTick() restarts it at the end of
-  // _loadAndPlay() — and since a track change is usually triggered by the
-  // 'ended' event (audioEl.currentTime already at/near its duration), that
-  // stale interval overwrites the just-reset position with "elapsed ==
-  // total" on every tick, which is what made the OS media notification
-  // briefly show a full progress bar right as the new track started.
   function _resetPositionForNewTrack() {
     _stopTick();
-    _updatePositionState();
+    _clearPositionState();
   }
 
   let _mounted = false;
@@ -365,14 +357,11 @@
       _playing.set(true);
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     }
+    _updatePositionState(true);
   }
 
   function _startTick() {
     if (_ticker) clearInterval(_ticker);
-    // Safety net only: timeupdate normally keeps everything in sync in
-    // real-time, but some platforms throttle/pause timeupdate (e.g.
-    // backgrounded tabs), so this makes sure the notification never goes
-    // stale for long.
     _ticker = setInterval(() => {
       if (!$_playing || !_audioEl || _seeking) return;
       _onTimeUpdate();
@@ -499,6 +488,11 @@
     _lyrics = null;
     _q8z.set(null);
     _setBodyLock(false);
+    if ('mediaSession' in navigator) {
+      _clearPositionState();
+      navigator.mediaSession.playbackState = 'none';
+      navigator.mediaSession.metadata = null;
+    }
   }
 
   function _openNP() {
@@ -524,7 +518,7 @@
   bind:this={_audioEl}
   style="display:none"
   on:ended={_nxt}
-  on:play={() => { if (!_loading) _playing.set(true); }}
+  on:play={() => { if (!_loading) _playing.set(true); _updatePositionState(true); }}
   on:pause={() => { if (!_loading) _playing.set(false); }}
   on:loadedmetadata={_onDurationKnown}
   on:durationchange={_onDurationKnown}
