@@ -247,6 +247,23 @@
     }
   }
 
+  function _stopTick() {
+    if (_ticker) { clearInterval(_ticker); _ticker = null; }
+  }
+
+  // Called the instant a track switch is detected, before the async stream
+  // fetch even starts. Without this, the previous track's ticker interval
+  // keeps running until _startTick() restarts it at the end of
+  // _loadAndPlay() — and since a track change is usually triggered by the
+  // 'ended' event (audioEl.currentTime already at/near its duration), that
+  // stale interval overwrites the just-reset position with "elapsed ==
+  // total" on every tick, which is what made the OS media notification
+  // briefly show a full progress bar right as the new track started.
+  function _resetPositionForNewTrack() {
+    _stopTick();
+    _updatePositionState();
+  }
+
   let _mounted = false;
 
   onMount(() => {
@@ -258,6 +275,7 @@
       _total = _dur2s($_q8z.duration);
       _pct = 0;
       _playing.set(true);
+      _resetPositionForNewTrack();
       _loadAndPlay($_q8z);
     }
   });
@@ -268,6 +286,7 @@
     _total = _dur2s($_q8z.duration);
     _pct = 0;
     _playing.set(true);
+    _resetPositionForNewTrack();
     _loadAndPlay($_q8z);
     _lyrics = null;
     _lyricsTrackId = null;
