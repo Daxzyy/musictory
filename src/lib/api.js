@@ -42,17 +42,51 @@ function _saveCache(c) {
 
 const _mem = new Map();
 const _searchMem = new Map();
+const _searchInFlight = new Map();
+let _searchActiveAbort = null;
+let _searchActiveKey = null;
+
+function _normQ(q) {
+  return String(q || '').trim().replace(/\s+/g, ' ');
+}
 
 export async function _g9(q) {
-  if (_searchMem.has(q)) return _searchMem.get(q);
-  const ts = Date.now();
-  const sig = await _sign(ts, q);
-  const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&ts=${ts}&sig=${sig}`);
-  const j = await r.json();
-  if (!j.d || !j.iv) return { query: q, totalSongs: 0, songs: [], albums: [], playlists: [], artists: [] };
-  const result = await _decrypt(j.d, j.iv);
-  _searchMem.set(q, result);
-  return result;
+  const key = _normQ(q);
+  if (_searchMem.has(key)) return _searchMem.get(key);
+  // Same query already in flight (e.g. typing-debounce fired, then the user
+  // picked a matching suggestion before it resolved) — reuse it instead of
+  // firing a second identical request.
+  if (_searchInFlight.has(key)) return _searchInFlight.get(key);
+
+  // A different query is still in flight — the user has moved on, so that
+  // request (and the 3 YT Music calls behind it) is now wasted work. Abort
+  // it instead of letting it run to completion in the background.
+  if (_searchActiveAbort && _searchActiveKey !== key) {
+    _searchActiveAbort.abort();
+  }
+
+  const controller = new AbortController();
+  _searchActiveAbort = controller;
+  _searchActiveKey = key;
+
+  const p = (async () => {
+    try {
+      const ts = Date.now();
+      const sig = await _sign(ts, key);
+      const r = await fetch(`/api/search?q=${encodeURIComponent(key)}&ts=${ts}&sig=${sig}`, { signal: controller.signal });
+      const j = await r.json();
+      if (!j.d || !j.iv) return { query: key, totalSongs: 0, songs: [], albums: [], playlists: [], artists: [] };
+      const result = await _decrypt(j.d, j.iv);
+      _searchMem.set(key, result);
+      return result;
+    } finally {
+      _searchInFlight.delete(key);
+      if (_searchActiveKey === key) { _searchActiveAbort = null; _searchActiveKey = null; }
+    }
+  })();
+
+  _searchInFlight.set(key, p);
+  return p;
 }
 
 export async function _getStreamUrl(videoId) {
