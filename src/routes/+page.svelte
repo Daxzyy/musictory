@@ -38,7 +38,7 @@
   async function _loadMain(query) {
     _ld = true; _er = null;
     try {
-      const r = await _g9(query);
+      const r = await _g9(query, '_home_mood');
       _ds = r.songs || [];
       _moodAlbums = (r.albums || []).slice(0, 10);
       _p1k.set(_ds);
@@ -58,7 +58,7 @@
   onMount(async () => {
     _loadMain(_moods[_activeMood].query);
     try {
-      const ra = await _g9(_artistQuery);
+      const ra = await _g9(_artistQuery, '_home_artists');
       _artists = (ra.artists || []).slice(0, 10);
     } catch {
       _artists = [];
