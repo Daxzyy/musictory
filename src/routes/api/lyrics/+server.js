@@ -7,15 +7,6 @@ function cleanT(t) {
 }
 function cleanA(a) { return String(a || '').replace(/- Topic/gi, '').trim(); }
 
-// LRCLIB's own /search endpoint does its own fuzzy matching, and feeding it
-// noisy text like "(feat. Nicki Minaj)" can throw its ranking off badly
-// enough that the correct track never even comes back in the results - so
-// our own scoring below never gets a chance to see it. Strip
-// feat/ft/featuring segments before building the *search query* only.
-// The original (unstripped) title/artist are still used for our own
-// identity scoring further down, so "feat. Nicki Minaj" is still useful
-// there for matching against a candidate whose artist field says
-// "ft. Nicki Minaj".
 function stripFeat(t) {
   return String(t || '')
     .replace(/[([]\s*(feat|ft|featuring)\.?\s+[^)\]]*[)\]]/gi, '')
@@ -44,12 +35,6 @@ const DURATION_TOLERANCE = 3;
 const MIN_MATCH_SCORE = 0.3;
 const TOP_MATCH_MARGIN = 0.12;
 
-// "feat."/"ft."/"featuring" show up inconsistently - sometimes in the title,
-// sometimes tacked onto the artist field, spelled differently depending on
-// the source. Canonicalizing them lets a request like
-// title="X (feat. B)" artist="A" match a candidate stored as
-// trackName="X" artistName="A ft. B", since we compare title+artist as one
-// combined identity rather than two separate fields.
 function normalize(s) {
   return String(s || '')
     .toLowerCase()
@@ -79,11 +64,6 @@ function isSubset(small, big) {
   return true;
 }
 
-// Score how well a candidate's (trackName + artistName) identity matches the
-// requested (title + artist), as one combined bag of words. This avoids the
-// failure mode where an exact-artist-but-wrong-song candidate outscores an
-// exact-song candidate whose artist field is formatted differently (e.g.
-// "Justin Bieber" vs "Justin Bieber ft. Nicki Minaj" for a featured track).
 function identityScore(cand, title, artist) {
   const reqTokens = tokenSet(`${title} ${artist}`);
   const candTokens = tokenSet(`${cand.trackName} ${cand.artistName}`);
@@ -92,58 +72,56 @@ function identityScore(cand, title, artist) {
   return Math.min(1, j + bonus);
 }
 
+function durationDiff(cand, duration) {
+  return (duration && cand.duration) ? Math.abs(cand.duration - duration) : null;
+}
+
+function withinDurationTolerance(entry) {
+  return entry.durDiff === null || entry.durDiff <= DURATION_TOLERANCE;
+}
+
+function byDurationThenScore(a, b) {
+  const da = a.durDiff === null ? Infinity : a.durDiff;
+  const db = b.durDiff === null ? Infinity : b.durDiff;
+  if (da !== db) return da - db;
+  return b.score - a.score;
+}
+
+function toResult(entry) {
+  return { type: entry.c.syncedLyrics ? 'synced' : 'plain', item: entry.c };
+}
+
 function pickBestLyrics(candidates, title, artist, duration) {
-  const scored = candidates
+  const evaluated = candidates
     .filter(c => c.plainLyrics || c.syncedLyrics)
     .map(c => ({
       c,
       score: identityScore(c, title, artist),
-      durDiff: (duration && c.duration) ? Math.abs(c.duration - duration) : null
+      durDiff: durationDiff(c, duration)
     }))
     .filter(x => x.score >= MIN_MATCH_SCORE);
-  if (!scored.length) return null;
 
-  scored.sort((a, b) => b.score - a.score);
-  const bestScore = scored[0].score;
-  // Candidates whose title+artist match is essentially tied for best.
-  const finalists = scored.filter(x => x.score >= bestScore - TOP_MATCH_MARGIN);
+  if (!evaluated.length) return null;
 
-  // Only one candidate clearly has the right title+artist: trust the text
-  // match and use it (synced if available) even if the requested duration
-  // is off - duration passed in can itself be wrong (wrong video length,
-  // rounding, etc.), and a single dominant text match is stronger evidence
-  // than a duration number of uncertain accuracy.
-  if (finalists.length === 1) {
-    const f = finalists[0];
-    return { type: f.c.syncedLyrics ? 'synced' : 'plain', item: f.c };
-  }
+  evaluated.sort((a, b) => b.score - a.score);
+  const bestScore = evaluated[0].score;
+  const finalists = evaluated.filter(x => x.score >= bestScore - TOP_MATCH_MARGIN);
 
-  // Multiple candidates are an equally good title+artist match (e.g. several
-  // uploads of the same song) - duration is what disambiguates between them.
-  const withinTol = x => x.durDiff === null || x.durDiff <= DURATION_TOLERANCE;
-  const byDurThenScore = (a, b) => {
-    const da = a.durDiff === null ? Infinity : a.durDiff;
-    const db = b.durDiff === null ? Infinity : b.durDiff;
-    if (da !== db) return da - db;
-    return b.score - a.score;
-  };
+  if (finalists.length === 1) return toResult(finalists[0]);
 
-  const syncedInTol = finalists.filter(x => x.c.syncedLyrics && withinTol(x)).sort(byDurThenScore);
-  if (syncedInTol.length) return { type: 'synced', item: syncedInTol[0].c };
+  const syncedInTol = finalists.filter(x => x.c.syncedLyrics && withinDurationTolerance(x)).sort(byDurationThenScore);
+  if (syncedInTol.length) return toResult(syncedInTol[0]);
 
-  const plainInTol = finalists.filter(x => x.c.plainLyrics && withinTol(x)).sort(byDurThenScore);
-  if (plainInTol.length) return { type: 'plain', item: plainInTol[0].c };
+  const plainInTol = finalists.filter(x => x.c.plainLyrics && withinDurationTolerance(x)).sort(byDurationThenScore);
+  if (plainInTol.length) return toResult(plainInTol[0]);
 
-  // Nobody among the finalists is within tolerance - avoid the biggest gaps,
-  // prefer synced over plain among the remaining best-matching metadata.
   finalists.sort((a, b) => {
     const aSynced = a.c.syncedLyrics ? 1 : 0;
     const bSynced = b.c.syncedLyrics ? 1 : 0;
     if (aSynced !== bSynced) return bSynced - aSynced;
-    return byDurThenScore(a, b);
+    return byDurationThenScore(a, b);
   });
-  const pick = finalists[0];
-  return { type: pick.c.syncedLyrics ? 'synced' : 'plain', item: pick.c };
+  return toResult(finalists[0]);
 }
 
 async function searchLrclib(q) {
@@ -152,6 +130,20 @@ async function searchLrclib(q) {
   if (!r.ok) return [];
   const j = await r.json();
   return Array.isArray(j) ? j : [];
+}
+
+function dedupeCandidates(lists) {
+  const seen = new Set();
+  const candidates = [];
+  for (const list of lists) {
+    for (const c of list) {
+      if (c && c.id != null && !seen.has(c.id)) {
+        seen.add(c.id);
+        candidates.push(c);
+      }
+    }
+  }
+  return candidates;
 }
 
 export async function GET({ url }) {
@@ -167,29 +159,18 @@ export async function GET({ url }) {
     const cleanArtist = cleanA(artist);
     const searchTitle = stripFeat(cleanTitle) || cleanTitle;
 
-    // Primary search uses a feat-stripped query - LRCLIB's own search engine
-    // can rank the right track poorly (or drop it entirely) when the query
-    // has noise like "(feat. Nicki Minaj)" baked in. The untouched query is
-    // run alongside as a safety net and merged in, in case stripping was too
-    // aggressive for a particular title.
     const [primary, secondary] = await Promise.all([
       searchLrclib(`${searchTitle} ${cleanArtist}`.trim()),
       searchTitle !== cleanTitle ? searchLrclib(`${cleanTitle} ${cleanArtist}`.trim()) : Promise.resolve([])
     ]);
-    const seen = new Set();
-    const candidates = [];
-    for (const c of [...primary, ...secondary]) {
-      if (c && c.id != null && !seen.has(c.id)) { seen.add(c.id); candidates.push(c); }
-    }
+    const candidates = dedupeCandidates([primary, secondary]);
 
     if (candidates.length) {
-      // Ranking still uses the original (unstripped) title/artist, so
-      // "feat. Nicki Minaj" is still available to match against a
-      // candidate whose artist field is "... ft. Nicki Minaj".
       const best = pickBestLyrics(candidates, cleanTitle, cleanArtist, duration);
       if (best) {
-        if (best.type === 'synced') lyricsData = { type: 'synced', lines: parseSyncedLyrics(best.item.syncedLyrics) };
-        else lyricsData = { type: 'plain', lines: parsePlainLyrics(best.item.plainLyrics) };
+        lyricsData = best.type === 'synced'
+          ? { type: 'synced', lines: parseSyncedLyrics(best.item.syncedLyrics) }
+          : { type: 'plain', lines: parsePlainLyrics(best.item.plainLyrics) };
       }
     }
     return new Response(JSON.stringify({ status: true, result: { title, artist, lyrics: lyricsData } }), { headers: { 'Content-Type': 'application/json' } });
