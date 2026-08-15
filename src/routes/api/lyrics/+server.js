@@ -25,13 +25,20 @@ function parsePlainLyrics(p) {
 }
 
 const DURATION_TOLERANCE = 3;
-const MIN_MATCH_SCORE = 0.35;
-const TOP_MATCH_MARGIN = 0.1;
+const MIN_MATCH_SCORE = 0.3;
+const TOP_MATCH_MARGIN = 0.12;
 
+// "feat."/"ft."/"featuring" show up inconsistently - sometimes in the title,
+// sometimes tacked onto the artist field, spelled differently depending on
+// the source. Canonicalizing them lets a request like
+// title="X (feat. B)" artist="A" match a candidate stored as
+// trackName="X" artistName="A ft. B", since we compare title+artist as one
+// combined identity rather than two separate fields.
 function normalize(s) {
   return String(s || '')
     .toLowerCase()
     .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(featuring|feat\.?|ft\.?)\b/g, 'feat')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -50,26 +57,31 @@ function jaccard(a, b) {
   return union === 0 ? 0 : inter / union;
 }
 
-function strSim(a, b) {
-  const na = normalize(a), nb = normalize(b);
-  if (!na && !nb) return 1;
-  if (!na || !nb) return 0;
-  if (na === nb) return 1;
-  const bonus = (na.includes(nb) || nb.includes(na)) ? 0.25 : 0;
-  return Math.min(1, jaccard(tokenSet(a), tokenSet(b)) + bonus);
+function isSubset(small, big) {
+  if (!small.size) return false;
+  for (const t of small) if (!big.has(t)) return false;
+  return true;
 }
 
-function matchScore(cand, title, artist) {
-  const titleScore = strSim(cand.trackName, title);
-  const artistScore = artist ? strSim(cand.artistName, artist) : 0.5;
-  return titleScore * 0.65 + artistScore * 0.35;
+// Score how well a candidate's (trackName + artistName) identity matches the
+// requested (title + artist), as one combined bag of words. This avoids the
+// failure mode where an exact-artist-but-wrong-song candidate outscores an
+// exact-song candidate whose artist field is formatted differently (e.g.
+// "Justin Bieber" vs "Justin Bieber ft. Nicki Minaj" for a featured track).
+function identityScore(cand, title, artist) {
+  const reqTokens = tokenSet(`${title} ${artist}`);
+  const candTokens = tokenSet(`${cand.trackName} ${cand.artistName}`);
+  const j = jaccard(reqTokens, candTokens);
+  const bonus = (isSubset(candTokens, reqTokens) || isSubset(reqTokens, candTokens)) ? 0.15 : 0;
+  return Math.min(1, j + bonus);
 }
 
 function pickBestLyrics(candidates, title, artist, duration) {
   const scored = candidates
+    .filter(c => c.plainLyrics || c.syncedLyrics)
     .map(c => ({
       c,
-      score: matchScore(c, title, artist),
+      score: identityScore(c, title, artist),
       durDiff: (duration && c.duration) ? Math.abs(c.duration - duration) : null
     }))
     .filter(x => x.score >= MIN_MATCH_SCORE);
@@ -77,38 +89,44 @@ function pickBestLyrics(candidates, title, artist, duration) {
 
   scored.sort((a, b) => b.score - a.score);
   const bestScore = scored[0].score;
-  const topMatches = scored.filter(x => x.score >= bestScore - TOP_MATCH_MARGIN);
+  // Candidates whose title+artist match is essentially tied for best.
+  const finalists = scored.filter(x => x.score >= bestScore - TOP_MATCH_MARGIN);
 
+  // Only one candidate clearly has the right title+artist: trust the text
+  // match and use it (synced if available) even if the requested duration
+  // is off - duration passed in can itself be wrong (wrong video length,
+  // rounding, etc.), and a single dominant text match is stronger evidence
+  // than a duration number of uncertain accuracy.
+  if (finalists.length === 1) {
+    const f = finalists[0];
+    return { type: f.c.syncedLyrics ? 'synced' : 'plain', item: f.c };
+  }
+
+  // Multiple candidates are an equally good title+artist match (e.g. several
+  // uploads of the same song) - duration is what disambiguates between them.
   const withinTol = x => x.durDiff === null || x.durDiff <= DURATION_TOLERANCE;
   const byDurThenScore = (a, b) => {
-    const da = a.durDiff === null ? 0 : a.durDiff;
-    const db = b.durDiff === null ? 0 : b.durDiff;
-    if (da !== db) return da - db;
-    return b.score - a.score;
-  };
-
-  // 1) Best synced lyrics within duration tolerance (or no duration to compare against)
-  const syncedInTol = topMatches.filter(x => x.c.syncedLyrics && withinTol(x)).sort(byDurThenScore);
-  if (syncedInTol.length) return { type: 'synced', item: syncedInTol[0].c };
-
-  // 2) No synced close enough -> fall back to plain within tolerance
-  const plainInTol = topMatches.filter(x => x.c.plainLyrics && withinTol(x)).sort(byDurThenScore);
-  if (plainInTol.length) return { type: 'plain', item: plainInTol[0].c };
-
-  // 3) Last resort: nothing close in duration, still avoid the biggest gaps,
-  // prefer synced over plain among the best-matching metadata
-  const anyLyrics = topMatches.filter(x => x.c.syncedLyrics || x.c.plainLyrics);
-  if (!anyLyrics.length) return null;
-  anyLyrics.sort((a, b) => {
-    const aSynced = a.c.syncedLyrics ? 1 : 0;
-    const bSynced = b.c.syncedLyrics ? 1 : 0;
-    if (aSynced !== bSynced) return bSynced - aSynced;
     const da = a.durDiff === null ? Infinity : a.durDiff;
     const db = b.durDiff === null ? Infinity : b.durDiff;
     if (da !== db) return da - db;
     return b.score - a.score;
+  };
+
+  const syncedInTol = finalists.filter(x => x.c.syncedLyrics && withinTol(x)).sort(byDurThenScore);
+  if (syncedInTol.length) return { type: 'synced', item: syncedInTol[0].c };
+
+  const plainInTol = finalists.filter(x => x.c.plainLyrics && withinTol(x)).sort(byDurThenScore);
+  if (plainInTol.length) return { type: 'plain', item: plainInTol[0].c };
+
+  // Nobody among the finalists is within tolerance - avoid the biggest gaps,
+  // prefer synced over plain among the remaining best-matching metadata.
+  finalists.sort((a, b) => {
+    const aSynced = a.c.syncedLyrics ? 1 : 0;
+    const bSynced = b.c.syncedLyrics ? 1 : 0;
+    if (aSynced !== bSynced) return bSynced - aSynced;
+    return byDurThenScore(a, b);
   });
-  const pick = anyLyrics[0];
+  const pick = finalists[0];
   return { type: pick.c.syncedLyrics ? 'synced' : 'plain', item: pick.c };
 }
 
