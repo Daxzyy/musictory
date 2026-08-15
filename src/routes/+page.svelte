@@ -88,39 +88,56 @@
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
 
       <div style="position:relative;width:48px;height:48px;flex-shrink:0">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="24" cy="24" r="22" stroke="#FFD700" stroke-width="2" fill="rgba(255,215,0,0.06)"/>
-          <circle cx="24" cy="24" r="15" stroke="rgba(255,215,0,0.35)" stroke-width="1" fill="none"/>
-          <circle cx="24" cy="24" r="8" fill="rgba(255,215,0,0.12)" stroke="rgba(255,215,0,0.5)" stroke-width="1"/>
-          <circle cx="24" cy="24" r="19" stroke="rgba(255,215,0,0.15)" stroke-width="0.75" fill="none"/>
-          <circle cx="24" cy="24" r="17" stroke="rgba(255,215,0,0.12)" stroke-width="0.75" fill="none"/>
-          <circle cx="24" cy="24" r="12" stroke="rgba(255,215,0,0.2)" stroke-width="0.75" fill="none"/>
-          <circle cx="24" cy="24" r="10" stroke="rgba(255,215,0,0.15)" stroke-width="0.75" fill="none"/>
-          <circle cx="24" cy="24" r="2.5" fill="#FFD700"/>
-          <line x1="36" y1="12" x2="28" y2="20" stroke="#FFD700" stroke-width="1.5" stroke-linecap="round"/>
-          <circle cx="36" cy="12" r="1.5" fill="#FFD700"/>
+        <svg width="48" height="48" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="512" height="512" rx="112" fill="#0D0D0D"/>
+          <path
+            d="M348 180
+               C322 151 282 136 238 136
+               C169 136 116 188 116 256
+               C116 324 169 376 238 376
+               C282 376 322 361 348 331
+               V256
+               H250"
+            stroke="#FFFFFF"
+            stroke-width="38"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <circle cx="220" cy="256" r="46" fill="#F5F5F5"/>
+          <circle cx="220" cy="256" r="38" stroke="#C8C8C8" stroke-width="2"/>
+          <circle cx="220" cy="256" r="31" stroke="#D5D5D5" stroke-width="2"/>
+          <g stroke="#0D0D0D" stroke-width="5" stroke-linecap="round">
+            <path d="M192 250V262"/>
+            <path d="M200 243V269"/>
+            <path d="M208 237V275"/>
+            <path d="M216 246V266"/>
+            <path d="M224 231V281"/>
+            <path d="M232 239V273"/>
+            <path d="M240 246V266"/>
+            <path d="M248 241V271"/>
+          </g>
+          <circle cx="220" cy="256" r="4" fill="#F5F5F5"/>
         </svg>
       </div>
 
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:baseline;gap:0px;line-height:1">
-          <span style="font-size:1.75rem;font-weight:700;color:#FFD700;letter-spacing:-.02em;font-family:'Quicksand',sans-serif">music</span>
-          <span style="font-size:1.75rem;font-weight:400;color:rgba(255,246,204,0.75);letter-spacing:-.02em;font-family:'Quicksand',sans-serif">tory</span>
+          <span style="font-size:1.75rem;font-weight:700;color:#FFFFFF;letter-spacing:-.02em;font-family:'Quicksand',sans-serif">Ganify</span>
         </div>
         <div style="margin-top:5px;display:inline-flex;align-items:center;gap:5px;
-          background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.2);
+          background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);
           border-radius:99px;padding:2px 10px">
-          <span style="font-size:.6rem;font-weight:700;color:#FFD700;letter-spacing:.12em;text-transform:uppercase">Your music, your story</span>
+          <span style="font-size:.6rem;font-weight:700;color:#FFFFFF;letter-spacing:.12em;text-transform:uppercase">Cari lagu apa aja ygy disini lengkap loh ya</span>
         </div>
       </div>
 
       <button
         on:click={() => goto('/search')}
         style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-          background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.15);
-          cursor:pointer;color:rgba(255,215,0,0.7);flex-shrink:0;transition:all .15s"
-        onmouseenter="this.style.background='rgba(255,215,0,0.18)';this.style.color='#FFD700';this.style.borderColor='rgba(255,215,0,0.4)'"
-        onmouseleave="this.style.background='rgba(255,215,0,0.07)';this.style.color='rgba(255,215,0,0.7)';this.style.borderColor='rgba(255,215,0,0.15)'"
+          background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);
+          cursor:pointer;color:rgba(255,255,255,0.7);flex-shrink:0;transition:all .15s"
+        onmouseenter="this.style.background='rgba(255,255,255,0.18)';this.style.color='#FFFFFF';this.style.borderColor='rgba(255,255,255,0.4)'"
+        onmouseleave="this.style.background='rgba(255,255,255,0.07)';this.style.color='rgba(255,255,255,0.7)';this.style.borderColor='rgba(255,255,255,0.15)'"
         aria-label="Cari lagu"
       >
         <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
@@ -145,14 +162,14 @@
     <div style="margin-bottom:22px">
       <div class="section-title" style="margin-bottom:10px">
         <span class="bar"></span>
-        <span style="font-size:.85rem;font-weight:700;color:#FFF6CC">Artis Top</span>
+        <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Artis Top</span>
       </div>
       <div class="hscroll hide-scrollbar">
         {#each _artists as a}
           <button on:click={() => goto(`/artist/${a.id}`)}
             style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:76px;background:none;border:none;cursor:pointer;padding:0">
-            <img src={a.cover} alt={a.title} style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,215,0,.2)" loading="lazy" />
-            <span style="font-size:.66rem;font-weight:600;color:rgba(255,246,204,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block">{a.title}</span>
+            <img src={a.cover} alt={a.title} style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.2)" loading="lazy" />
+            <span style="font-size:.66rem;font-weight:600;color:rgba(245,245,245,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block">{a.title}</span>
           </button>
         {/each}
       </div>
@@ -165,9 +182,9 @@
       <button on:click={() => _pickMood(i)}
         class="chip-tab {_activeMood === i ? 'active' : ''}"
         style="flex-shrink:0;padding:8px 16px;border-radius:99px;font-size:.72rem;font-weight:700;cursor:pointer;
-          background:{_activeMood === i ? '' : 'rgba(255,215,0,.06)'};
-          border:1px solid {_activeMood === i ? 'transparent' : 'rgba(255,215,0,.15)'};
-          color:{_activeMood === i ? '' : 'rgba(255,246,204,.6)'}">
+          background:{_activeMood === i ? '' : 'rgba(255,255,255,.06)'};
+          border:1px solid {_activeMood === i ? 'transparent' : 'rgba(255,255,255,.15)'};
+          color:{_activeMood === i ? '' : 'rgba(245,245,245,.6)'}">
         {mood.label}
       </button>
     {/each}
@@ -194,7 +211,7 @@
     </div>
 
   {:else if _er}
-    <div class="glass-card" style="border-radius:16px;padding:24px;text-align:center;color:rgba(255,246,204,.55)">
+    <div class="glass-card" style="border-radius:16px;padding:24px;text-align:center;color:rgba(245,245,245,.55)">
       <p style="font-size:.875rem">Gagal memuat data 😔</p>
       <p style="font-size:.75rem;margin-top:4px;opacity:.6">{_er}</p>
     </div>
@@ -207,11 +224,11 @@
       <div style="margin-bottom:24px">
         <div class="section-title" style="margin-bottom:10px">
           <span class="bar"></span>
-          <span style="font-size:.85rem;font-weight:700;color:#FFF6CC">Sorotan {_moods[_activeMood].label}</span>
+          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Sorotan {_moods[_activeMood].label}</span>
         </div>
         <div class="glass-card hero-card animate-card-up"
           style="border-radius:20px;overflow:hidden;position:relative;cursor:pointer;
-            {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,215,0,.4);box-shadow:0 0 24px rgba(255,215,0,.15)' : ''}"
+            {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,255,255,.4);box-shadow:0 0 24px rgba(255,255,255,.15)' : ''}"
           role="button" tabindex="0"
           on:click={() => _pl(item, idx)} on:keydown={e => e.key === 'Enter' && _pl(item, idx)}>
           <img src={item.thumbnail} alt={item.title} class="hero-img" loading="lazy" />
@@ -231,17 +248,17 @@
 
           <button on:click={e => _openMenu(e, item)}
             style="position:absolute;top:12px;left:12px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-              background:rgba(10,10,10,.45);backdrop-filter:blur(6px);border:1px solid rgba(255,215,0,.2);cursor:pointer;color:rgba(255,246,204,.85)">
+              background:rgba(10,10,10,.45);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.2);cursor:pointer;color:rgba(245,245,245,.85)">
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
           </button>
 
           <div class="hero-body">
-            <p style="font-size:.62rem;font-weight:700;color:#FFD700;letter-spacing:.1em;text-transform:uppercase;margin:0 0 6px">Pilihan Teratas</p>
+            <p style="font-size:.62rem;font-weight:700;color:#FFFFFF;letter-spacing:.1em;text-transform:uppercase;margin:0 0 6px">Pilihan Teratas</p>
             <p style="font-size:1.08rem;font-weight:700;line-height:1.3;margin:0 0 4px;
               display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-              color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'}">{item.title}</p>
+              color:{$_q8z?.videoId === item.videoId ? '#FFFFFF' : '#F5F5F5'}">{item.title}</p>
             {#if item.author}
-              <p style="font-size:.76rem;font-weight:600;color:rgba(255,246,204,.65);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{item.author}</p>
+              <p style="font-size:.76rem;font-weight:600;color:rgba(245,245,245,.65);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{item.author}</p>
             {/if}
           </div>
 
@@ -257,13 +274,13 @@
       <div style="margin-bottom:24px">
         <div class="section-title" style="margin-bottom:10px">
           <span class="bar"></span>
-          <span style="font-size:.85rem;font-weight:700;color:#FFF6CC">Rekomendasi Cepat</span>
+          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Rekomendasi Cepat</span>
         </div>
         <div class="quick-grid">
           {#each _quick as { item, idx }, i}
             <div class="glass-card animate-card-up quick-card"
               style="border-radius:14px;overflow:hidden;position:relative;cursor:pointer;animation-delay:{i*40}ms;
-                {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,215,0,.4);box-shadow:0 0 16px rgba(255,215,0,.13)' : ''}"
+                {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,255,255,.4);box-shadow:0 0 16px rgba(255,255,255,.13)' : ''}"
               role="button" tabindex="0"
               on:click={() => _pl(item, idx)} on:keydown={e => e.key === 'Enter' && _pl(item, idx)}>
               <img src={item.thumbnail} alt={item.title} class="quick-img" loading="lazy" />
@@ -282,7 +299,7 @@
               {:else}
                 <button on:click={e => _openMenu(e, item)}
                   style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-                    background:rgba(10,10,10,.5);border:none;cursor:pointer;color:rgba(255,246,204,.85)">
+                    background:rgba(10,10,10,.5);border:none;cursor:pointer;color:rgba(245,245,245,.85)">
                   <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                 </button>
               {/if}
@@ -290,9 +307,9 @@
               <div class="quick-body">
                 <p style="font-size:.72rem;font-weight:700;line-height:1.25;margin:0 0 2px;
                   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-                  color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'}">{item.title}</p>
+                  color:{$_q8z?.videoId === item.videoId ? '#FFFFFF' : '#F5F5F5'}">{item.title}</p>
                 {#if item.author}
-                  <p style="font-size:.62rem;font-weight:600;color:rgba(255,246,204,.55);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{item.author}</p>
+                  <p style="font-size:.62rem;font-weight:600;color:rgba(245,245,245,.55);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{item.author}</p>
                 {/if}
               </div>
             </div>
@@ -306,15 +323,15 @@
       <div style="margin-bottom:24px">
         <div class="section-title" style="margin-bottom:10px">
           <span class="bar"></span>
-          <span style="font-size:.85rem;font-weight:700;color:#FFF6CC">Album &amp; Single Populer</span>
+          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Album &amp; Single Populer</span>
         </div>
         <div class="hscroll hide-scrollbar">
           {#each _moodAlbums as al}
             <button on:click={() => goto(`/album/${al.id}`)}
               style="background:none;border:none;cursor:pointer;text-align:left;width:128px;flex-shrink:0;padding:0">
               <img src={al.cover} alt={al.title} style="width:128px;height:128px;border-radius:12px;object-fit:cover;display:block;margin-bottom:8px" loading="lazy" />
-              <p style="font-size:.74rem;font-weight:700;color:#FFF6CC;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.title}</p>
-              <p style="font-size:.65rem;color:rgba(255,246,204,.4);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.artist}</p>
+              <p style="font-size:.74rem;font-weight:700;color:#F5F5F5;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.title}</p>
+              <p style="font-size:.65rem;color:rgba(245,245,245,.4);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.artist}</p>
             </button>
           {/each}
         </div>
@@ -325,14 +342,14 @@
     {#if _rest.length}
       <div class="section-title" style="margin-bottom:10px">
         <span class="bar"></span>
-        <span style="font-size:.85rem;font-weight:700;color:#FFF6CC">Untukmu</span>
+        <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Untukmu</span>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:8px">
         {#each _rest as { item, idx }, i}
           <div class="glass-card animate-card-up"
             style="border-radius:14px;padding:9px;display:flex;gap:10px;align-items:center;animation-delay:{Math.min(i,10)*30}ms;
-              {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,215,0,.38);box-shadow:0 0 18px rgba(255,215,0,.13)' : ''}">
+              {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,255,255,.38);box-shadow:0 0 18px rgba(255,255,255,.13)' : ''}">
 
             <button on:click={() => _pl(item, idx)}
               style="display:flex;gap:10px;align-items:center;flex:1;min-width:0;background:none;border:none;cursor:pointer;text-align:left;padding:0">
@@ -357,13 +374,13 @@
               </div>
               <div style="flex:1;min-width:0">
                 <p style="font-size:.83rem;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-                  color:{$_q8z?.videoId === item.videoId ? '#FFD700' : '#FFF6CC'};margin-bottom:3px">
+                  color:{$_q8z?.videoId === item.videoId ? '#FFFFFF' : '#F5F5F5'};margin-bottom:3px">
                   {item.title}
                 </p>
                 {#if item.author}
                   {#if item.artistId}
                     <span role="link" tabindex="0" on:click|stopPropagation={() => goto(`/artist/${item.artistId}`)} on:keydown={() => {}}
-                      style="font-size:.7rem;font-weight:500;color:rgba(255,215,0,.5);margin:0;cursor:pointer;
+                      style="font-size:.7rem;font-weight:500;color:rgba(255,255,255,.5);margin:0;cursor:pointer;
                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">
                       {item.author}
                     </span>
@@ -379,9 +396,9 @@
 
             <button on:click={e => _openMenu(e, item)}
               style="width:28px;height:28px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
-                background:transparent;border:none;cursor:pointer;color:rgba(255,246,204,.3);transition:all .15s"
-              onmouseenter="this.style.background='rgba(255,215,0,.1)';this.style.color='rgba(255,215,0,.7)'"
-              onmouseleave="this.style.background='transparent';this.style.color='rgba(255,246,204,.3)'">
+                background:transparent;border:none;cursor:pointer;color:rgba(245,245,245,.3);transition:all .15s"
+              onmouseenter="this.style.background='rgba(255,255,255,.1)';this.style.color='rgba(255,255,255,.7)'"
+              onmouseleave="this.style.background='transparent';this.style.color='rgba(245,245,245,.3)'">
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
             </button>
 
@@ -393,7 +410,7 @@
 
   {#if !_ld && !_er}
   <div style="padding:20px 0 24px;text-align:center">
-    <span style="font-size:.62rem;color:rgba(255,215,0,.2);letter-spacing:.12em;font-weight:600">· dibuat dengan ❤️ oleh givy ·</span>
+    <span style="font-size:.62rem;color:rgba(255,255,255,.2);letter-spacing:.12em;font-weight:600">· dibuat dengan ❤️ oleh givy ·</span>
   </div>
   {/if}
 
@@ -404,8 +421,8 @@
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    border: 2.5px solid rgba(255,215,0,.2);
-    border-top-color: #FFD700;
+    border: 2.5px solid rgba(255,255,255,.2);
+    border-top-color: #FFFFFF;
     animation: _mspin .7s linear infinite;
   }
   @keyframes _mspin { to { transform: rotate(360deg); } }
@@ -422,7 +439,7 @@
     position: absolute; right: 16px; bottom: 16px; width: 44px; height: 44px; border-radius: 50%;
     background: linear-gradient(135deg, var(--gold), var(--gold-soft));
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 16px rgba(255,215,0,.35);
+    box-shadow: 0 4px 16px rgba(255,255,255,.35);
   }
 
   /* Rekomendasi cepat grid */
