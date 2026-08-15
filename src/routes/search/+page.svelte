@@ -118,8 +118,10 @@
     _init = true;
     _searchInit.set(true);
     _t = setTimeout(async () => {
+      const _reqVal = val;
       try {
         const r = await _g9(val);
+        if (_qv !== _reqVal) return; // superseded by a newer query while this was in flight
         _ds = r.songs || [];
         _albums = r.albums || [];
         _artists = r.artists || [];
@@ -127,13 +129,15 @@
         _searchAlbums.set(_albums);
         _searchArtists.set(_artists);
         _p1k.set(_ds);
-      } catch {
+      } catch (e) {
+        if (e?.name === 'AbortError') return; // cancelled because the user kept typing, not a real error
+        if (_qv !== _reqVal) return;
         _ds = []; _albums = []; _artists = [];
         _searchResults.set([]);
         _searchAlbums.set([]);
         _searchArtists.set([]);
       } finally {
-        _ld = false;
+        if (_qv === _reqVal) _ld = false;
       }
     }, 300);
   }
@@ -148,8 +152,10 @@
     _searchInit.set(true);
     if (_t) clearTimeout(_t);
     _t = setTimeout(async () => {
+      const _reqVal = q;
       try {
         const r = await _g9(q);
+        if (_qv !== _reqVal) return;
         _ds = r.songs || [];
         _albums = r.albums || [];
         _artists = r.artists || [];
@@ -157,13 +163,15 @@
         _searchAlbums.set(_albums);
         _searchArtists.set(_artists);
         _p1k.set(_ds);
-      } catch {
+      } catch (e) {
+        if (e?.name === 'AbortError') return;
+        if (_qv !== _reqVal) return;
         _ds = []; _albums = []; _artists = [];
         _searchResults.set([]);
         _searchAlbums.set([]);
         _searchArtists.set([]);
       } finally {
-        _ld = false;
+        if (_qv === _reqVal) _ld = false;
       }
     }, 0);
   }
