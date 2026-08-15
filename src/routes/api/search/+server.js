@@ -287,7 +287,8 @@ function extractTopResultSong(data) {
   if (!videoId) return null;
   const subRuns = card?.subtitle?.runs || [];
   const subtitleText = getRunsText(subRuns).toLowerCase();
-  if (!subtitleText.includes('song') && !subtitleText.includes('lagu')) return null;
+  const excludedTypes = ['artist', 'artis', 'album', 'playlist', 'profil', 'profile', 'podcast', 'episode'];
+  if (excludedTypes.some(t => subtitleText.includes(t))) return null;
   const title = getRunsText(card?.title?.runs);
   let artist = '', artistId = '';
   for (const run of subRuns) {
@@ -298,13 +299,15 @@ function extractTopResultSong(data) {
     const parts = getRunsText(subRuns).split('•').map(s => s.trim()).filter(Boolean);
     artist = parts.length > 1 ? parts[1] : '';
   }
+  const accLabel = card?.subtitle?.accessibility?.accessibilityData?.label || '';
+  const duration = durationToColon(accLabel) || durationToColon(subtitleText);
   const thumbs = card?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
   const thumbnail = toHDThumbnail(thumbs.length ? thumbs[thumbs.length - 1].url : '', videoId);
   return {
     title: cleanTitle(title),
     videoId,
     thumbnail,
-    duration: '',
+    duration,
     author: artist,
     artist,
     artistId,
