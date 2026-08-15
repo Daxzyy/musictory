@@ -161,8 +161,29 @@ function extractSongRows(data) {
         for (const run of subRuns) {
           const text = run.text || '';
           const browseId = run?.navigationEndpoint?.browseEndpoint?.browseId || '';
-          if (browseId.startsWith('UC')) { artist = text; artistId = browseId; }
-          else if (browseId.startsWith('MPRE')) { album = text; albumId = browseId; }
+          if (browseId.startsWith('UC') && !artist) { artist = text; artistId = browseId; }
+          else if (browseId.startsWith('MPRE') && !album) { album = text; albumId = browseId; }
+        }
+        // Some search rows don't expose a channel link (browseId) for the
+        // artist run at all — e.g. featured/associated or unofficial-upload
+        // artists. In that case fall back to position, but do it against the
+        // *meaningful* runs (type label / '•' separators / duration text
+        // stripped out) instead of a raw subRuns index, which used to land
+        // on the '•' separator itself and show up as the artist name.
+        if (!artist) {
+          const durationLike = /^\d+:\d{2}(:\d{2})?$/;
+          const meaningfulRuns = subRuns.filter(run => {
+            const txt = (run.text || '').trim();
+            return txt && txt !== '•' && txt !== '·' && txt !== '-';
+          });
+          for (let i = 0; i < meaningfulRuns.length; i++) {
+            const txt = (meaningfulRuns[i].text || '').trim();
+            if (i === 0) continue; // leading type label, e.g. "Song" / "Lagu" / "Video"
+            if (durationLike.test(txt)) continue;
+            if (album && txt === album) continue;
+            artist = meaningfulRuns[i].text || '';
+            break;
+          }
         }
         const accLabel = cols[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.accessibility?.accessibilityData?.label || '';
         let duration = durationToColon(accLabel);
@@ -178,8 +199,8 @@ function extractSongRows(data) {
           videoId,
           thumbnail,
           duration,
-          author: artist || (subRuns[1]?.text || ''),
-          artist: artist || (subRuns[1]?.text || ''),
+          author: artist,
+          artist,
           artistId,
           album: album || '',
           albumId
