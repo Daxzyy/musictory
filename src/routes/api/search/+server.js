@@ -79,6 +79,7 @@ async function fetchYoutube(query, type) {
   };
   if (type === 'songs') payload.params = 'EgWKAQIIAWoSEAQQAxAFEAkQChAVEBAQERAO';
   else if (type === 'artists') payload.params = 'EgWKAQIgAWoKEAoQCRADEAA=';
+  else if (type === 'all') delete payload.params;
 
   const r = await fetch('https://music.youtube.com/youtubei/v1/search?prettyPrint=false', {
     method: 'POST',
@@ -90,15 +91,6 @@ async function fetchYoutube(query, type) {
 
 function getRunsText(runs) { return Array.isArray(runs) ? runs.map(r => r.text || '').join('') : ''; }
 
-// --- multi-word / case-insensitive relevance matching -----------------
-// YouTube Music's own per-type ("songs" / "artists") search filters are not
-// always consistent for multi-word queries: a query like "justin" can
-// surface an artist that then disappears once the query becomes
-// "justin bieber", because the filtered shelf re-ranks/drops items using
-// its own (undocumented) logic. To make results consistent we tokenize the
-// query ourselves and re-rank everything we get back by how well each
-// item's title/artist/album actually matches the query, instead of trusting
-// upstream ordering blindly.
 function normalizeQuery(q) {
   return String(q || '').trim().replace(/\s+/g, ' ');
 }
@@ -116,10 +108,6 @@ function relevanceScore(fields, tokens) {
   if (!haystack) return 0;
   let matched = 0;
   for (const t of tokens) if (haystack.includes(t)) matched++;
-  // Full-phrase (all tokens present, in any order) match ranks highest,
-  // partial-token matches still rank above non-matches, and the exact
-  // phrase (tokens joined back with a space) gets a small extra boost so
-  // near-identical titles/artists float to the very top.
   let score = matched / tokens.length;
   if (matched === tokens.length) score += 1;
   if (tokens.length > 1 && haystack.includes(tokens.join(' '))) score += 0.5;
@@ -134,8 +122,92 @@ function rankByRelevance(list, tokens, fieldsFn) {
     .map(x => x.item);
 }
 
-// Shared row extraction for the "list item" shaped renderers used by the
-// playlists/albums and artists filtered searches.
+const SONG_WEIGHT_TITLE = 3;
+const SONG_WEIGHT_ARTIST = 1.6;
+const SONG_WEIGHT_ALBUM = 1;
+const SONG_WEIGHT_LYRICS = 2.4;
+const SONG_WEIGHT_TOP_RESULT = 5;
+
+function songRelevanceScore(song, tokens, lyricSignals) {
+  if (!tokens.length) return 0;
+  const titleScore = relevanceScore([song.title], tokens);
+  const artistScore = relevanceScore([song.artist], tokens);
+  const albumScore = relevanceScore([song.album], tokens);
+  const lyricsScore = lyricSignals.get(song.videoId) || 0;
+  const topResultScore = song.isTopResult ? 1 : 0;
+  return titleScore * SONG_WEIGHT_TITLE
+    + artistScore * SONG_WEIGHT_ARTIST
+    + albumScore * SONG_WEIGHT_ALBUM
+    + lyricsScore * SONG_WEIGHT_LYRICS
+    + topResultScore * SONG_WEIGHT_TOP_RESULT;
+}
+
+function rankSongsByRelevance(songs, tokens, lyricSignals) {
+  if (!tokens.length) return songs;
+  return songs
+    .map((item, i) => ({ item, i, score: songRelevanceScore(item, tokens, lyricSignals) }))
+    .sort((a, b) => (b.score - a.score) || (a.i - b.i))
+    .map(x => x.item);
+}
+
+const LYRIC_CHECK_LIMIT = 12;
+const LYRIC_FETCH_TIMEOUT = 2500;
+
+async function fetchJsonWithTimeout(url, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: controller.signal });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function lyricsTextOf(entry) {
+  return String(entry?.plainLyrics || entry?.syncedLyrics || '').toLowerCase();
+}
+
+async function fetchSongLyricScore(song, tokens) {
+  if (!tokens.length) return 0;
+  const trackName = encodeURIComponent(song.title || '');
+  const artistName = encodeURIComponent(song.artist || '');
+  if (!trackName) return 0;
+  const data = await fetchJsonWithTimeout(
+    `https://lrclib.net/api/search?track_name=${trackName}&artist_name=${artistName}`,
+    LYRIC_FETCH_TIMEOUT
+  );
+  if (!Array.isArray(data) || data.length === 0) return 0;
+  const text = lyricsTextOf(data[0]);
+  if (!text) return 0;
+  let matched = 0;
+  for (const t of tokens) if (text.includes(t)) matched++;
+  return matched / tokens.length;
+}
+
+async function buildLyricSignals(songs, tokens) {
+  const signals = new Map();
+  if (!tokens.length || songs.length === 0) return signals;
+  const seen = new Set();
+  const candidates = [];
+  for (const s of songs) {
+    const key = `${(s.title || '').toLowerCase()}|${(s.artist || '').toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    candidates.push(s);
+    if (candidates.length >= LYRIC_CHECK_LIMIT) break;
+  }
+  const results = await Promise.allSettled(candidates.map(s => fetchSongLyricScore(s, tokens)));
+  candidates.forEach((s, i) => {
+    const r = results[i];
+    signals.set(s.videoId, r.status === 'fulfilled' ? r.value : 0);
+  });
+  return signals;
+}
+
 function extractRows(data) {
   if (!data) return [];
   const items = [];
@@ -182,7 +254,46 @@ function rowsToAlbumsAndPlaylists(rows) {
   return { albums, playlists };
 }
 
-// Shared row extraction for the "songs" filtered search shape.
+function extractTopResultSong(data) {
+  if (!data) return null;
+  const cards = [];
+  findAllKeys(data, 'musicCardShelfRenderer', cards);
+  if (!cards.length) return null;
+  const card = cards[0];
+  const videoId =
+    card?.onTap?.watchEndpoint?.videoId ||
+    card?.buttons?.[0]?.buttonRenderer?.navigationEndpoint?.watchEndpoint?.videoId ||
+    card?.title?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId || '';
+  if (!videoId) return null;
+  const subRuns = card?.subtitle?.runs || [];
+  const subtitleText = getRunsText(subRuns).toLowerCase();
+  if (!subtitleText.includes('song') && !subtitleText.includes('lagu')) return null;
+  const title = getRunsText(card?.title?.runs);
+  let artist = '', artistId = '';
+  for (const run of subRuns) {
+    const browseId = run?.navigationEndpoint?.browseEndpoint?.browseId || '';
+    if (browseId.startsWith('UC')) { artist = run.text || ''; artistId = browseId; break; }
+  }
+  if (!artist) {
+    const parts = getRunsText(subRuns).split('•').map(s => s.trim()).filter(Boolean);
+    artist = parts.length > 1 ? parts[1] : '';
+  }
+  const thumbs = card?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+  const thumbnail = toHDThumbnail(thumbs.length ? thumbs[thumbs.length - 1].url : '', videoId);
+  return {
+    title: cleanTitle(title),
+    videoId,
+    thumbnail,
+    duration: '',
+    author: artist,
+    artist,
+    artistId,
+    album: '',
+    albumId: '',
+    isTopResult: true
+  };
+}
+
 function extractSongRows(data) {
   if (!data) return [];
   const out = [];
@@ -243,32 +354,23 @@ function dedupeBy(list, keyFn) {
   return out;
 }
 
-// Minimum fraction of query tokens that must be found in an item's
-// title/artist/album for it to count as a real match when we're
-// re-querying with a narrowed (single-token) fallback search.
 const MIN_MATCH_RATIO = 0.5;
 
 async function performSearch(rawQuery) {
   const query = normalizeQuery(rawQuery);
   const tokens = tokenize(query);
 
-  const [songsData, playlistsData, artistsData] = await Promise.all([
+  const [songsData, playlistsData, artistsData, allData] = await Promise.all([
     fetchYoutube(query, 'songs').catch(() => null),
     fetchYoutube(query, 'playlists').catch(() => null),
-    fetchYoutube(query, 'artists').catch(() => null)
+    fetchYoutube(query, 'artists').catch(() => null),
+    fetchYoutube(query, 'all').catch(() => null)
   ]);
 
   let songs = extractSongRows(songsData);
   let artists = rowsToArtists(extractRows(artistsData));
   const { albums, playlists } = rowsToAlbumsAndPlaylists(extractRows(playlistsData));
 
-  // YouTube Music's per-type filters can be inconsistent for multi-word
-  // queries (e.g. "justin" surfaces the artist, "justin bieber" returns
-  // nothing). When that happens, retry with just the first token — which
-  // reliably matches YT's own search — then keep only the rows whose
-  // title/artist/album actually satisfy most of the *original* query
-  // tokens (case-insensitive substring matching). This restores consistent
-  // multi-word behaviour without changing the endpoint or response shape.
   if (tokens.length > 1) {
     const seedToken = tokens[0];
 
@@ -285,10 +387,13 @@ async function performSearch(rawQuery) {
     }
   }
 
-  // Re-rank everything ourselves so items that genuinely match every word
-  // of the query (title, artist AND album, case-insensitively) always come
-  // first, regardless of how upstream ordered them.
-  songs = rankByRelevance(dedupeBy(songs, s => s.videoId), tokens, s => [s.title, s.artist, s.album]);
+  const topResultSong = extractTopResultSong(allData);
+  const allTabSongs = extractSongRows(allData);
+  songs = dedupeBy([...(topResultSong ? [topResultSong] : []), ...songs, ...allTabSongs], s => s.videoId);
+
+  const lyricSignals = await buildLyricSignals(songs, tokens);
+  songs = rankSongsByRelevance(songs, tokens, lyricSignals);
+
   artists = rankByRelevance(dedupeBy(artists, a => a.id), tokens, a => [a.title]);
   const rankedAlbums = rankByRelevance(dedupeBy(albums, a => a.id), tokens, a => [a.title, a.artist]);
   const rankedPlaylists = rankByRelevance(dedupeBy(playlists, p => p.id), tokens, p => [p.title, p.artist]);
