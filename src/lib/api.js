@@ -125,8 +125,10 @@ export async function _getArtist(id) {
   return j.status ? j.result : null;
 }
 
-export async function _getLyrics(title, artist) {
-  const r = await fetch(`/api/lyrics?title=${encodeURIComponent(title || '')}&artist=${encodeURIComponent(artist || '')}`);
+export async function _getLyrics(title, artist, duration) {
+  let q = `/api/lyrics?title=${encodeURIComponent(title || '')}&artist=${encodeURIComponent(artist || '')}`;
+  if (duration && isFinite(duration) && duration > 0) q += `&duration=${Math.round(duration)}`;
+  const r = await fetch(q);
   const j = await r.json();
   return j.status ? j.result.lyrics : null;
 }
