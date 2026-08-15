@@ -43,14 +43,23 @@ function _saveCache(c) {
 const _mem = new Map();
 const _searchMem = new Map();
 const _searchInFlight = new Map();
-let _searchActiveAbort = null;
-let _searchActiveKey = null;
+// The "abort the previous query when a new one comes in" race below exists
+// for a single typeahead input (the search page), where an older query is
+// genuinely superseded by whatever the user typed next. That's only true
+// for calls belonging to the same sequence, so the abort state is tracked
+// per "group" instead of one global slot — otherwise two independent calls
+// firing close together (e.g. the home page's mood query and artist query
+// on mount) would cancel each other even though neither supersedes the
+// other. Callers that don't pass a group share the default one, so the
+// search page keeps its original cancel-on-supersede behavior unchanged.
+const _activeAbortByGroup = new Map();
+const _activeKeyByGroup = new Map();
 
 function _normQ(q) {
   return String(q || '').trim().replace(/\s+/g, ' ');
 }
 
-export async function _g9(q) {
+export async function _g9(q, group = 'default') {
   const key = _normQ(q);
   if (_searchMem.has(key)) return _searchMem.get(key);
   // Same query already in flight (e.g. typing-debounce fired, then the user
@@ -58,16 +67,20 @@ export async function _g9(q) {
   // firing a second identical request.
   if (_searchInFlight.has(key)) return _searchInFlight.get(key);
 
-  // A different query is still in flight — the user has moved on, so that
-  // request (and the 3 YT Music calls behind it) is now wasted work. Abort
-  // it instead of letting it run to completion in the background.
-  if (_searchActiveAbort && _searchActiveKey !== key) {
-    _searchActiveAbort.abort();
+  // A different query in the SAME group is still in flight — the user has
+  // moved on, so that request (and the 3 YT Music calls behind it) is now
+  // wasted work. Abort it instead of letting it run to completion in the
+  // background. Requests in other groups are left untouched since they're
+  // unrelated, independent fetches.
+  const activeAbort = _activeAbortByGroup.get(group);
+  const activeKey = _activeKeyByGroup.get(group);
+  if (activeAbort && activeKey !== key) {
+    activeAbort.abort();
   }
 
   const controller = new AbortController();
-  _searchActiveAbort = controller;
-  _searchActiveKey = key;
+  _activeAbortByGroup.set(group, controller);
+  _activeKeyByGroup.set(group, key);
 
   const p = (async () => {
     try {
@@ -81,7 +94,7 @@ export async function _g9(q) {
       return result;
     } finally {
       _searchInFlight.delete(key);
-      if (_searchActiveKey === key) { _searchActiveAbort = null; _searchActiveKey = null; }
+      if (_activeKeyByGroup.get(group) === key) { _activeAbortByGroup.delete(group); _activeKeyByGroup.delete(group); }
     }
   })();
 
