@@ -127,25 +127,35 @@ const SONG_WEIGHT_ARTIST = 1.6;
 const SONG_WEIGHT_ALBUM = 1;
 const SONG_WEIGHT_LYRICS = 2.4;
 const SONG_WEIGHT_TOP_RESULT = 5;
+const SONG_WEIGHT_ARTIST_AFFINITY = 2.5;
 
-function songRelevanceScore(song, tokens, lyricSignals) {
+function matchesAffinity(song, affinity) {
+  if (!affinity) return false;
+  if (affinity.artistId && song.artistId && song.artistId === affinity.artistId) return true;
+  if (affinity.artistName && normalizeCompare(song.artist) === normalizeCompare(affinity.artistName)) return true;
+  return false;
+}
+
+function songRelevanceScore(song, tokens, lyricSignals, affinity) {
   if (!tokens.length) return 0;
   const titleScore = relevanceScore([song.title], tokens);
   const artistScore = relevanceScore([song.artist], tokens);
   const albumScore = relevanceScore([song.album], tokens);
   const lyricsScore = lyricSignals.get(song.videoId) || 0;
   const topResultScore = song.isTopResult ? 1 : 0;
+  const affinityScore = matchesAffinity(song, affinity) ? 1 : 0;
   return titleScore * SONG_WEIGHT_TITLE
     + artistScore * SONG_WEIGHT_ARTIST
     + albumScore * SONG_WEIGHT_ALBUM
     + lyricsScore * SONG_WEIGHT_LYRICS
-    + topResultScore * SONG_WEIGHT_TOP_RESULT;
+    + topResultScore * SONG_WEIGHT_TOP_RESULT
+    + affinityScore * SONG_WEIGHT_ARTIST_AFFINITY;
 }
 
-function rankSongsByRelevance(songs, tokens, lyricSignals) {
+function rankSongsByRelevance(songs, tokens, lyricSignals, affinity) {
   if (!tokens.length) return songs;
   return songs
-    .map((item, i) => ({ item, i, score: songRelevanceScore(item, tokens, lyricSignals) }))
+    .map((item, i) => ({ item, i, score: songRelevanceScore(item, tokens, lyricSignals, affinity) }))
     .sort((a, b) => (b.score - a.score) || (a.i - b.i))
     .map(x => x.item);
 }
@@ -398,6 +408,12 @@ async function fetchCanonicalSongVersion(title, artist) {
   return findMatchingSong(rows, title, artist);
 }
 
+async function fetchArtistCatalog(artistName) {
+  if (!artistName) return [];
+  const data = await fetchYoutube(artistName, 'songs').catch(() => null);
+  return extractSongRows(data);
+}
+
 const MIN_MATCH_RATIO = 0.5;
 
 async function performSearch(rawQuery) {
@@ -440,10 +456,18 @@ async function performSearch(rawQuery) {
     if (!canonical) canonical = await fetchCanonicalSongVersion(topResultCard.title, topResultCard.artist);
     topResultSong = canonical ? { ...canonical, isTopResult: true } : topResultCard;
   }
-  songs = dedupeBy([...(topResultSong ? [topResultSong] : []), ...songs, ...allTabSongs], s => s.videoId);
+
+  let affinity = null;
+  let artistCatalogSongs = [];
+  if (topResultSong && topResultSong.isTopResult && topResultSong.artist) {
+    affinity = { artistId: topResultSong.artistId || '', artistName: topResultSong.artist };
+    artistCatalogSongs = await fetchArtistCatalog(topResultSong.artist);
+  }
+
+  songs = dedupeBy([...(topResultSong ? [topResultSong] : []), ...songs, ...allTabSongs, ...artistCatalogSongs], s => s.videoId);
 
   const lyricSignals = await buildLyricSignals(songs, tokens);
-  songs = rankSongsByRelevance(songs, tokens, lyricSignals);
+  songs = rankSongsByRelevance(songs, tokens, lyricSignals, affinity);
 
   artists = rankByRelevance(dedupeBy(artists, a => a.id), tokens, a => [a.title]);
   const rankedAlbums = rankByRelevance(dedupeBy(albums, a => a.id), tokens, a => [a.title, a.artist]);
