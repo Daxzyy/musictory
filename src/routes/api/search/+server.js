@@ -150,8 +150,8 @@ function rankSongsByRelevance(songs, tokens, lyricSignals) {
     .map(x => x.item);
 }
 
-const LYRIC_CHECK_LIMIT = 12;
-const LYRIC_FETCH_TIMEOUT = 2500;
+const LYRIC_CHECK_LIMIT = 16;
+const LYRIC_FETCH_TIMEOUT = 2000;
 
 async function fetchJsonWithTimeout(url, ms) {
   const controller = new AbortController();
@@ -168,11 +168,33 @@ async function fetchJsonWithTimeout(url, ms) {
 }
 
 function lyricsTextOf(entry) {
-  return String(entry?.plainLyrics || entry?.syncedLyrics || '').toLowerCase();
+  return String(entry?.plainLyrics || entry?.syncedLyrics || '');
+}
+
+function normalizeForMatch(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\u00c0-\u024f\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function phraseMatchScore(haystack, tokens) {
+  if (!haystack || tokens.length < 2) return 0;
+  const fullPhrase = tokens.join(' ');
+  if (haystack.includes(fullPhrase)) return 1;
+  let bestRun = 0;
+  for (let start = 0; start < tokens.length - 1; start++) {
+    for (let len = tokens.length - start; len >= 2; len--) {
+      const sub = tokens.slice(start, start + len).join(' ');
+      if (haystack.includes(sub)) { bestRun = Math.max(bestRun, len); break; }
+    }
+  }
+  return bestRun >= 2 ? bestRun / tokens.length : 0;
 }
 
 async function fetchSongLyricScore(song, tokens) {
-  if (!tokens.length) return 0;
+  if (tokens.length < 2) return 0;
   const trackName = encodeURIComponent(song.title || '');
   const artistName = encodeURIComponent(song.artist || '');
   if (!trackName) return 0;
@@ -181,16 +203,14 @@ async function fetchSongLyricScore(song, tokens) {
     LYRIC_FETCH_TIMEOUT
   );
   if (!Array.isArray(data) || data.length === 0) return 0;
-  const text = lyricsTextOf(data[0]);
+  const text = normalizeForMatch(lyricsTextOf(data[0]));
   if (!text) return 0;
-  let matched = 0;
-  for (const t of tokens) if (text.includes(t)) matched++;
-  return matched / tokens.length;
+  return phraseMatchScore(text, tokens);
 }
 
 async function buildLyricSignals(songs, tokens) {
   const signals = new Map();
-  if (!tokens.length || songs.length === 0) return signals;
+  if (tokens.length < 2 || songs.length === 0) return signals;
   const seen = new Set();
   const candidates = [];
   for (const s of songs) {
