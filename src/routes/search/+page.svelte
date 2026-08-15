@@ -344,13 +344,6 @@
           cursor:pointer;font-size:.75rem;font-weight:700;color:rgba(255,246,204,.6);white-space:nowrap;flex-shrink:0">
         Lagu ({_ds.length})
       </button>
-      {#if _artists.length > 0}
-        <button on:click={() => _setTab('artists')} class="chip-tab {_tab==='artists' ? 'active' : ''}"
-          style="padding:8px 16px;border-radius:99px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.15);
-            cursor:pointer;font-size:.75rem;font-weight:700;color:rgba(255,246,204,.6);white-space:nowrap;flex-shrink:0">
-          Artis ({_artists.length})
-        </button>
-      {/if}
       {#if _albums.length > 0}
         <button on:click={() => _setTab('albums')} class="chip-tab {_tab==='albums' ? 'active' : ''}"
           style="padding:8px 16px;border-radius:99px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.15);
@@ -358,20 +351,14 @@
           Album ({_albums.length})
         </button>
       {/if}
+      {#if _artists.length > 0}
+        <button on:click={() => _setTab('artists')} class="chip-tab {_tab==='artists' ? 'active' : ''}"
+          style="padding:8px 16px;border-radius:99px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.15);
+            cursor:pointer;font-size:.75rem;font-weight:700;color:rgba(255,246,204,.6);white-space:nowrap;flex-shrink:0">
+          Artis ({_artists.length})
+        </button>
+      {/if}
     </div>
-
-    {#if _artists.length > 0 && _tab === 'songs'}
-      <button on:click={() => goto(`/artist/${_artists[0].id}`)} class="glass-card animate-card-up"
-        style="width:100%;display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;
-          background:none;cursor:pointer;text-align:left;margin-bottom:14px">
-        <img src={_artists[0].cover} alt={_artists[0].title} style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,215,0,.25);flex-shrink:0" loading="lazy" />
-        <div style="flex:1;min-width:0">
-          <p style="font-size:.62rem;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.08em;margin:0 0 3px">ARTIS</p>
-          <p style="font-size:.88rem;font-weight:700;color:#FFF6CC;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{_artists[0].title}</p>
-        </div>
-        <svg width="18" height="18" fill="rgba(255,215,0,.4)" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
-      </button>
-    {/if}
 
     {#if _tab === 'songs'}
       {#if _ds.length === 0}
@@ -466,8 +453,5 @@
     max-width: 560px;
     margin: 0 auto;
   }
-  /* Grid items default to min-width:auto, which lets long unbroken titles
-     force the track (and page) wider than the viewport. Force them to
-     respect the track width so ellipsis/line-clamp on children can work. */
   .song-grid > * { min-width: 0; }
 </style>
