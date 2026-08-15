@@ -7,6 +7,22 @@ function cleanT(t) {
 }
 function cleanA(a) { return String(a || '').replace(/- Topic/gi, '').trim(); }
 
+// LRCLIB's own /search endpoint does its own fuzzy matching, and feeding it
+// noisy text like "(feat. Nicki Minaj)" can throw its ranking off badly
+// enough that the correct track never even comes back in the results - so
+// our own scoring below never gets a chance to see it. Strip
+// feat/ft/featuring segments before building the *search query* only.
+// The original (unstripped) title/artist are still used for our own
+// identity scoring further down, so "feat. Nicki Minaj" is still useful
+// there for matching against a candidate whose artist field says
+// "ft. Nicki Minaj".
+function stripFeat(t) {
+  return String(t || '')
+    .replace(/[([]\s*(feat|ft|featuring)\.?\s+[^)\]]*[)\]]/gi, '')
+    .replace(/\s+(feat|ft|featuring)\.?\s+.*/i, '')
+    .trim();
+}
+
 function parseSyncedLyrics(s) {
   const lines = [];
   const p = /\[(\d{2,}):(\d{2})(?:\.(\d{2,3}))?\]\s*(.*)/;
@@ -130,6 +146,14 @@ function pickBestLyrics(candidates, title, artist, duration) {
   return { type: pick.c.syncedLyrics ? 'synced' : 'plain', item: pick.c };
 }
 
+async function searchLrclib(q) {
+  if (!q) return [];
+  const r = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(q)}`, { headers: { 'User-Agent': UA } });
+  if (!r.ok) return [];
+  const j = await r.json();
+  return Array.isArray(j) ? j : [];
+}
+
 export async function GET({ url }) {
   const title = (url.searchParams.get('title') || '').trim();
   const artist = (url.searchParams.get('artist') || '').trim();
@@ -139,11 +163,30 @@ export async function GET({ url }) {
 
   try {
     let lyricsData = { type: 'none', lines: [] };
-    const q = encodeURIComponent(`${cleanT(title)} ${cleanA(artist)}`.trim());
-    const r = await fetch(`https://lrclib.net/api/search?q=${q}`, { headers: { 'User-Agent': UA } });
-    const lrc = await r.json();
-    if (Array.isArray(lrc) && lrc.length > 0) {
-      const best = pickBestLyrics(lrc, cleanT(title), cleanA(artist), duration);
+    const cleanTitle = cleanT(title);
+    const cleanArtist = cleanA(artist);
+    const searchTitle = stripFeat(cleanTitle) || cleanTitle;
+
+    // Primary search uses a feat-stripped query - LRCLIB's own search engine
+    // can rank the right track poorly (or drop it entirely) when the query
+    // has noise like "(feat. Nicki Minaj)" baked in. The untouched query is
+    // run alongside as a safety net and merged in, in case stripping was too
+    // aggressive for a particular title.
+    const [primary, secondary] = await Promise.all([
+      searchLrclib(`${searchTitle} ${cleanArtist}`.trim()),
+      searchTitle !== cleanTitle ? searchLrclib(`${cleanTitle} ${cleanArtist}`.trim()) : Promise.resolve([])
+    ]);
+    const seen = new Set();
+    const candidates = [];
+    for (const c of [...primary, ...secondary]) {
+      if (c && c.id != null && !seen.has(c.id)) { seen.add(c.id); candidates.push(c); }
+    }
+
+    if (candidates.length) {
+      // Ranking still uses the original (unstripped) title/artist, so
+      // "feat. Nicki Minaj" is still available to match against a
+      // candidate whose artist field is "... ft. Nicki Minaj".
+      const best = pickBestLyrics(candidates, cleanTitle, cleanArtist, duration);
       if (best) {
         if (best.type === 'synced') lyricsData = { type: 'synced', lines: parseSyncedLyrics(best.item.syncedLyrics) };
         else lyricsData = { type: 'plain', lines: parsePlainLyrics(best.item.plainLyrics) };
