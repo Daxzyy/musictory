@@ -87,8 +87,8 @@
   <div style="margin-bottom:22px">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
 
-      <div style="position:relative;width:48px;height:48px;flex-shrink:0">
-        <svg width="48" height="48" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div style="position:relative;width:64px;height:64px;flex-shrink:0">
+        <svg width="64" height="64" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="512" height="512" rx="112" fill="#0D0D0D"/>
           <path
             d="M348 180
@@ -120,15 +120,8 @@
         </svg>
       </div>
 
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:baseline;gap:0px;line-height:1">
-          <span style="font-size:1.75rem;font-weight:700;color:#FFFFFF;letter-spacing:-.02em;font-family:'Quicksand',sans-serif">Ganify</span>
-        </div>
-        <div style="margin-top:5px;display:inline-flex;align-items:center;gap:5px;
-          background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);
-          border-radius:99px;padding:2px 10px">
-          <span style="font-size:.6rem;font-weight:700;color:#FFFFFF;letter-spacing:.12em;text-transform:uppercase">Cari lagu apa aja ygy disini lengkap loh ya</span>
-        </div>
+      <div style="flex:1;min-width:0;display:flex;align-items:center">
+        <span style="font-size:1.75rem;font-weight:700;color:#FFFFFF;letter-spacing:-.02em;font-family:'Quicksand',sans-serif">Ganify</span>
       </div>
 
       <button
