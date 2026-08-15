@@ -230,6 +230,23 @@
     } catch(_) {}
   }
 
+  // The real audio element's own duration is the only source of truth for
+  // "how long is this track". Metadata-derived duration (from search results)
+  // is just a rounded estimate used before playback starts, and can be a few
+  // seconds shorter than the actual stream — which is what let currentTime
+  // (_elapsed) drift past the displayed total (e.g. "3:09 / 3:00"). Sync
+  // _total from _audioEl.duration the moment it's known, not just once a
+  // second from the ticker.
+  function _onDurationKnown() {
+    if (!_audioEl) return;
+    const d = _audioEl.duration;
+    if (typeof d === 'number' && isFinite(d) && d > 0) {
+      _total = Math.floor(d);
+      _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
+      _syncSeekEls(_pct);
+    }
+  }
+
   let _mounted = false;
 
   onMount(() => {
@@ -303,8 +320,14 @@
     if (_ticker) clearInterval(_ticker);
     _ticker = setInterval(() => {
       if (!$_playing || !_audioEl || _seeking) return;
+      if (isFinite(_audioEl.duration) && _audioEl.duration > 0) {
+        _total = Math.floor(_audioEl.duration);
+      }
       _elapsed = Math.floor(_audioEl.currentTime);
-      _total = _audioEl.duration && !isNaN(_audioEl.duration) ? Math.floor(_audioEl.duration) : _total;
+      // Defensive clamp: never let the displayed position exceed the
+      // displayed total, even for a single tick (e.g. rounding at the
+      // very end of a track before 'ended' fires).
+      if (_total > 0 && _elapsed > _total) _elapsed = _total;
       _pct = _total > 0 ? (_elapsed / _total) * 100 : 0;
       _syncSeekEls(_pct);
       _updatePositionState();
@@ -458,6 +481,8 @@
   on:ended={_nxt}
   on:play={() => { if (!_loading) _playing.set(true); }}
   on:pause={() => { if (!_loading) _playing.set(false); }}
+  on:loadedmetadata={_onDurationKnown}
+  on:durationchange={_onDurationKnown}
   on:timeupdate={() => { if (_audioEl) _lyricT = _audioEl.currentTime || 0; }}
 ></audio>
 
@@ -516,7 +541,7 @@
                   <div class="eqbar eqbar{bar}" style="width:3px;border-radius:2px;background:#FFD700;animation-play-state:{$_playing ? 'running' : 'paused'}"></div>
                 {/each}
               </div>
-              <span style="font-size:.62rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)} / {$_q8z.duration}</span>
+              <span style="font-size:.62rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)} / {_s2dur(_total)}</span>
             {/if}
           </div>
         </div>
@@ -672,7 +697,7 @@
       </div>
       <div style="display:flex;justify-content:space-between">
         <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{_s2dur(_elapsed)}</span>
-        <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{$_q8z.duration}</span>
+        <span style="font-size:.65rem;color:rgba(255,246,204,.35)">{_s2dur(_total)}</span>
       </div>
     </div>
 
