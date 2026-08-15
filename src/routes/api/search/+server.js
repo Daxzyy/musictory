@@ -377,6 +377,27 @@ function dedupeBy(list, keyFn) {
   return out;
 }
 
+function normalizeCompare(text) {
+  return String(text || '').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/gi, ' ').trim();
+}
+
+function findMatchingSong(pool, title, artist) {
+  const t = normalizeCompare(title);
+  const a = normalizeCompare(artist);
+  if (!t) return null;
+  const exact = pool.find(s => normalizeCompare(s.title) === t && normalizeCompare(s.artist) === a);
+  if (exact) return exact;
+  return pool.find(s => normalizeCompare(s.title) === t) || null;
+}
+
+async function fetchCanonicalSongVersion(title, artist) {
+  const q = `${title || ''} ${artist || ''}`.trim();
+  if (!q) return null;
+  const data = await fetchYoutube(q, 'songs').catch(() => null);
+  const rows = extractSongRows(data);
+  return findMatchingSong(rows, title, artist);
+}
+
 const MIN_MATCH_RATIO = 0.5;
 
 async function performSearch(rawQuery) {
@@ -410,8 +431,15 @@ async function performSearch(rawQuery) {
     }
   }
 
-  const topResultSong = extractTopResultSong(allData);
+  const topResultCard = extractTopResultSong(allData);
   const allTabSongs = extractSongRows(allData);
+  const candidatePool = [...songs, ...allTabSongs];
+  let topResultSong = null;
+  if (topResultCard) {
+    let canonical = findMatchingSong(candidatePool, topResultCard.title, topResultCard.artist);
+    if (!canonical) canonical = await fetchCanonicalSongVersion(topResultCard.title, topResultCard.artist);
+    topResultSong = canonical ? { ...canonical, isTopResult: true } : topResultCard;
+  }
   songs = dedupeBy([...(topResultSong ? [topResultSong] : []), ...songs, ...allTabSongs], s => s.videoId);
 
   const lyricSignals = await buildLyricSignals(songs, tokens);
