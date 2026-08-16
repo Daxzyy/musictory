@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { _g9 } from '$lib/api.js';
+  import { _g9, _getArtist } from '$lib/api.js';
   import { _q8z, _p1k, _x9a, _showMenu, _playlists } from '$lib/store.js';
   import { getPlaylists } from '$lib/playlist.js';
 
@@ -12,27 +12,13 @@
   let _extra = [];
   let _extraLabel = '';
   let _loadingId = null;
-  let _artistsAll = [];
+  let _topArtists = [];
+  let _pool = [];
   let _artists = [];
   let _artistsLoading = true;
-  let _activeMood = 0;
+  let _activeArtist = null;
 
   const _artistQuery = 'Denny Caknan Tulus Raisa Yura Yunita Mahalini Rizky Febian NIKI Rich Brian Weird Genius';
-
-  const _moods = [
-    { label: 'Viral', query: 'Lagu Indonesia Viral Tiktok 2026' },
-    { label: 'Santai', query: 'Chill Vibes Lofi Songs' },
-    { label: 'Fokus', query: 'Focus Deep Work Instrumental Music' },
-    { label: 'Nyetir', query: 'Driving Roadtrip Music Indonesia' },
-    { label: 'Gaming', query: 'Gaming EDM Hype Songs' },
-    { label: 'Semangat', query: 'Energetic Workout Beats' },
-    { label: 'Pesta', query: 'Party Dance Hits' },
-    { label: 'Bahagia', query: 'Feel Good Happy Songs Indonesia' },
-    { label: 'Romantis', query: 'Lagu Romantis Indonesia' },
-    { label: 'Tidur', query: 'Sleeping Calming Relaxation Music' },
-    { label: 'Galau', query: 'Lagu Sad Galau Indonesia' },
-    { label: 'Nostalgia', query: 'Lagu Indonesia 2000an Nostalgia' },
-  ];
 
   $: _hero = _ds.length ? { item: _ds[0], idx: 0 } : null;
   $: _quick = _ds.slice(1, 5).map((item, i) => ({ item, idx: i + 1 }));
@@ -47,32 +33,65 @@
     return a;
   }
 
-  function _pickFlavorIndices(excludeIdx, count) {
-    const pool = _moods.map((_, i) => i).filter(i => i !== excludeIdx);
-    return _shuffle(pool).slice(0, count);
-  }
-
   function _artistKey(item) {
     return (item.artistId || item.author || item.title || '').toLowerCase();
   }
 
-  async function _loadFeed(moodIdx) {
+  function _normSongs(list, fallbackName, fallbackId) {
+    return (list || []).map(s => ({ ...s, author: s.author || s.artist || fallbackName, artistId: s.artistId || fallbackId }));
+  }
+
+  function _selectArtists(count, excludeIds = []) {
+    const excl = new Set(excludeIds);
+    const candidates = _pool.filter(a => a.id && !excl.has(a.id));
+    return _shuffle(candidates).slice(0, count);
+  }
+
+  async function _loadFeed() {
     _ld = true; _er = null;
     try {
-      const [flavorAIdx, flavorBIdx] = _pickFlavorIndices(moodIdx, 2);
-      const [primary, flavorA, flavorB] = await Promise.all([
-        _g9(_moods[moodIdx].query, '_home_primary'),
-        _g9(_moods[flavorAIdx].query, '_home_flavor_a'),
-        _g9(_moods[flavorBIdx].query, '_home_flavor_b'),
-      ]);
+      let anchors = _activeArtist
+        ? [_activeArtist, ..._selectArtists(2, [_activeArtist.id])]
+        : _selectArtists(3);
+
+      if (!anchors.length) {
+        const fb = await _g9('Musik Populer Indonesia', '_home_fallback');
+        _ds = (fb.songs || []).slice(0, 20);
+        _p1k.set(_ds);
+        _extra = [];
+        _extraLabel = '';
+        _collection = (fb.albums || []).slice(0, 10).map(a => ({ ...a, _kind: a.albumType || 'Album' }));
+        return;
+      }
+
+      const details = (await Promise.all(anchors.map(a => _getArtist(a.id).catch(() => null)))).filter(Boolean);
+      if (!details.length) throw new Error('Gagal memuat data artis');
+
+      const newSimilar = [];
+      details.forEach(d => (d.similarArtists || []).forEach(s => { if (s.id) newSimilar.push(s); }));
+      if (newSimilar.length) {
+        const merged = [..._pool, ...newSimilar];
+        const seen = new Set();
+        _pool = merged.filter(a => {
+          if (!a.id || seen.has(a.id)) return false;
+          seen.add(a.id);
+          return true;
+        }).slice(0, 60);
+      }
+
+      const primary = details[0];
+      const extraAnchor = details[1] || null;
+      const flavorAnchors = details.slice(extraAnchor ? 2 : 1);
 
       const usedIds = new Set();
-      const extraSongs = _shuffle((flavorA.songs || []).filter(s => s.videoId)).slice(0, 10);
+      const extraSongs = extraAnchor
+        ? _shuffle(_normSongs(extraAnchor.topSongs, extraAnchor.name, extraAnchor.artistId).filter(s => s.videoId)).slice(0, 10)
+        : [];
       extraSongs.forEach(s => usedIds.add(s.videoId));
 
       const pools = [
-        { songs: primary.songs || [], weight: 0 },
-        { songs: flavorB.songs || [], weight: 1 },
+        { songs: _normSongs(primary.topSongs, primary.name, primary.artistId), weight: 0 },
+        ...flavorAnchors.map(d => ({ songs: _normSongs(d.topSongs, d.name, d.artistId), weight: 1 })),
       ];
 
       const candidates = [];
@@ -91,7 +110,7 @@
       for (const c of candidates) {
         const key = _artistKey(c.item);
         const n = artistCap.get(key) || 0;
-        if (key && n >= 2) continue;
+        if (key && n >= 3) continue;
         artistCap.set(key, n + 1);
         capped.push(c.item);
         if (capped.length >= 30) break;
@@ -100,11 +119,16 @@
       _ds = capped;
       _p1k.set(_ds);
       _extra = extraSongs;
-      _extraLabel = _moods[flavorAIdx].label;
+      _extraLabel = extraAnchor ? extraAnchor.name : '';
 
-      const albumItems = (primary.albums || []).slice(0, 8).map(a => ({ ...a, _kind: a.albumType || 'Album' }));
-      const playlistItems = (primary.playlists || []).slice(0, 6).map(p => ({ ...p, _kind: 'Playlist' }));
-      _collection = _shuffle([...albumItems, ...playlistItems]).slice(0, 10);
+      const albumItems = [];
+      const seenCol = new Set();
+      details.forEach(d => {
+        (d.topAlbums || []).forEach(a => { if (a.id && !seenCol.has(a.id)) { seenCol.add(a.id); albumItems.push({ ...a, _kind: 'Album' }); } });
+        (d.topSingles || []).forEach(a => { if (a.id && !seenCol.has(a.id)) { seenCol.add(a.id); albumItems.push({ ...a, _kind: 'Single' }); } });
+        (d.playlists || []).forEach(a => { if (a.id && !seenCol.has(a.id)) { seenCol.add(a.id); albumItems.push({ ...a, _kind: 'Playlist' }); } });
+      });
+      _collection = _shuffle(albumItems).slice(0, 10);
     } catch (e) {
       if (e?.name === 'AbortError') return;
       _er = e.message;
@@ -113,34 +137,37 @@
     }
   }
 
-  async function _pickMood(i) {
-    if (_activeMood === i) return;
-    _activeMood = i;
-    await _loadFeed(i);
+  async function _pickArtist(a) {
+    const nextId = a?.id || null;
+    const curId = _activeArtist?.id || null;
+    if (nextId === curId) return;
+    _activeArtist = a;
+    await _loadFeed();
   }
 
   async function _refresh() {
     if (_refreshing || _ld) return;
     _refreshing = true;
     try {
-      await _loadFeed(_activeMood);
-      if (_artistsAll.length) _artists = _shuffle(_artistsAll).slice(0, 10);
+      await _loadFeed();
+      if (_pool.length) _artists = _shuffle(_pool).slice(0, 10);
     } finally {
       _refreshing = false;
     }
   }
 
   onMount(async () => {
-    await _loadFeed(_activeMood);
     try {
       const ra = await _g9(_artistQuery, '_home_artists');
-      _artistsAll = ra.artists || [];
-      _artists = _shuffle(_artistsAll).slice(0, 10);
+      _topArtists = ra.artists || [];
+      _pool = [..._topArtists];
+      _artists = _shuffle(_topArtists).slice(0, 10);
     } catch {
-      _artistsAll = []; _artists = [];
+      _topArtists = []; _pool = []; _artists = [];
     } finally {
       _artistsLoading = false;
     }
+    await _loadFeed();
   });
 
   async function _pl(item, idx) {
@@ -245,18 +272,34 @@
     </div>
   </div>
 
-  <div class="hscroll hide-scrollbar" style="margin-bottom:24px">
-    {#each _moods as mood, i}
-      <button on:click={() => _pickMood(i)}
-        class="chip-tab {_activeMood === i ? 'active' : ''}"
+  {#if _artistsLoading}
+    <div class="hscroll hide-scrollbar" style="margin-bottom:24px">
+      {#each Array(5) as _}
+        <div class="skeleton" style="flex-shrink:0;width:84px;height:34px;border-radius:99px"></div>
+      {/each}
+    </div>
+  {:else if _topArtists.length}
+    <div class="hscroll hide-scrollbar" style="margin-bottom:24px">
+      <button on:click={() => _pickArtist(null)}
+        class="chip-tab {!_activeArtist ? 'active' : ''}"
         style="flex-shrink:0;padding:8px 16px;border-radius:99px;font-size:.72rem;font-weight:700;cursor:pointer;
-          background:{_activeMood === i ? '' : 'rgba(255,255,255,.06)'};
-          border:1px solid {_activeMood === i ? 'transparent' : 'rgba(255,255,255,.15)'};
-          color:{_activeMood === i ? '' : 'rgba(245,245,245,.6)'}">
-        {mood.label}
+          background:{!_activeArtist ? '' : 'rgba(255,255,255,.06)'};
+          border:1px solid {!_activeArtist ? 'transparent' : 'rgba(255,255,255,.15)'};
+          color:{!_activeArtist ? '' : 'rgba(245,245,245,.6)'}">
+        Untukmu
       </button>
-    {/each}
-  </div>
+      {#each _topArtists as a}
+        <button on:click={() => _pickArtist(a)}
+          class="chip-tab {_activeArtist?.id === a.id ? 'active' : ''}"
+          style="flex-shrink:0;padding:8px 16px;border-radius:99px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;
+            background:{_activeArtist?.id === a.id ? '' : 'rgba(255,255,255,.06)'};
+            border:1px solid {_activeArtist?.id === a.id ? 'transparent' : 'rgba(255,255,255,.15)'};
+            color:{_activeArtist?.id === a.id ? '' : 'rgba(245,245,245,.6)'}">
+          {a.title}
+        </button>
+      {/each}
+    </div>
+  {/if}
 
   {#if _ld}
     <div class="skeleton" style="width:100%;aspect-ratio:16/10;border-radius:20px;margin-bottom:22px"></div>
@@ -300,7 +343,7 @@
       <div style="margin-bottom:24px">
         <div class="section-title" style="margin-bottom:10px">
           <span class="bar"></span>
-          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Sorotan {_moods[_activeMood].label}</span>
+          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">{_activeArtist ? `Sorotan dari ${_activeArtist.title}` : 'Sorotan Hari Ini'}</span>
         </div>
         <div class="glass-card hero-card animate-card-up"
           style="border-radius:20px;overflow:hidden;position:relative;cursor:pointer;
@@ -397,7 +440,7 @@
       <div style="margin-bottom:24px">
         <div class="section-title" style="margin-bottom:10px">
           <span class="bar"></span>
-          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Vibes {_extraLabel}</span>
+          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Lainnya dari {_extraLabel}</span>
         </div>
         <div class="hscroll hide-scrollbar">
           {#each _extra as item, i}
