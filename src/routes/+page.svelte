@@ -7,8 +7,12 @@
 
   const __cv = _q8z;
   let _ds = [], _ld = true, _er = null;
-  let _moodAlbums = [];
+  let _refreshing = false;
+  let _collection = [];
+  let _extra = [];
+  let _extraLabel = '';
   let _loadingId = null;
+  let _artistsAll = [];
   let _artists = [];
   let _artistsLoading = true;
   let _activeMood = 0;
@@ -30,19 +34,79 @@
     { label: 'Nostalgia', query: 'Lagu Indonesia 2000an Nostalgia' },
   ];
 
-  // Derived, index-preserving slices so playback queue order always matches _ds.
   $: _hero = _ds.length ? { item: _ds[0], idx: 0 } : null;
   $: _quick = _ds.slice(1, 5).map((item, i) => ({ item, idx: i + 1 }));
   $: _rest = _ds.slice(5).map((item, i) => ({ item, idx: i + 5 }));
 
-  async function _loadMain(query) {
+  function _shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function _pickFlavorIndices(excludeIdx, count) {
+    const pool = _moods.map((_, i) => i).filter(i => i !== excludeIdx);
+    return _shuffle(pool).slice(0, count);
+  }
+
+  function _artistKey(item) {
+    return (item.artistId || item.author || item.title || '').toLowerCase();
+  }
+
+  async function _loadFeed(moodIdx) {
     _ld = true; _er = null;
     try {
-      const r = await _g9(query, '_home_mood');
-      _ds = r.songs || [];
-      _moodAlbums = (r.albums || []).slice(0, 10);
+      const [flavorAIdx, flavorBIdx] = _pickFlavorIndices(moodIdx, 2);
+      const [primary, flavorA, flavorB] = await Promise.all([
+        _g9(_moods[moodIdx].query, '_home_primary'),
+        _g9(_moods[flavorAIdx].query, '_home_flavor_a'),
+        _g9(_moods[flavorBIdx].query, '_home_flavor_b'),
+      ]);
+
+      const usedIds = new Set();
+      const extraSongs = _shuffle((flavorA.songs || []).filter(s => s.videoId)).slice(0, 10);
+      extraSongs.forEach(s => usedIds.add(s.videoId));
+
+      const pools = [
+        { songs: primary.songs || [], weight: 0 },
+        { songs: flavorB.songs || [], weight: 1 },
+      ];
+
+      const candidates = [];
+      pools.forEach(({ songs, weight }) => {
+        songs.forEach((s, pos) => {
+          if (!s.videoId || usedIds.has(s.videoId)) return;
+          usedIds.add(s.videoId);
+          candidates.push({ item: s, pos, weight, rand: Math.random() });
+        });
+      });
+
+      candidates.sort((a, b) => (a.pos + a.weight * 4 + a.rand * 7) - (b.pos + b.weight * 4 + b.rand * 7));
+
+      const artistCap = new Map();
+      const capped = [];
+      for (const c of candidates) {
+        const key = _artistKey(c.item);
+        const n = artistCap.get(key) || 0;
+        if (key && n >= 2) continue;
+        artistCap.set(key, n + 1);
+        capped.push(c.item);
+        if (capped.length >= 30) break;
+      }
+
+      _ds = capped;
       _p1k.set(_ds);
+      _extra = extraSongs;
+      _extraLabel = _moods[flavorAIdx].label;
+
+      const albumItems = (primary.albums || []).slice(0, 8).map(a => ({ ...a, _kind: a.albumType || 'Album' }));
+      const playlistItems = (primary.playlists || []).slice(0, 6).map(p => ({ ...p, _kind: 'Playlist' }));
+      _collection = _shuffle([...albumItems, ...playlistItems]).slice(0, 10);
     } catch (e) {
+      if (e?.name === 'AbortError') return;
       _er = e.message;
     } finally {
       _ld = false;
@@ -52,16 +116,28 @@
   async function _pickMood(i) {
     if (_activeMood === i) return;
     _activeMood = i;
-    await _loadMain(_moods[i].query);
+    await _loadFeed(i);
+  }
+
+  async function _refresh() {
+    if (_refreshing || _ld) return;
+    _refreshing = true;
+    try {
+      await _loadFeed(_activeMood);
+      if (_artistsAll.length) _artists = _shuffle(_artistsAll).slice(0, 10);
+    } finally {
+      _refreshing = false;
+    }
   }
 
   onMount(async () => {
-    _loadMain(_moods[_activeMood].query);
+    await _loadFeed(_activeMood);
     try {
       const ra = await _g9(_artistQuery, '_home_artists');
-      _artists = (ra.artists || []).slice(0, 10);
+      _artistsAll = ra.artists || [];
+      _artists = _shuffle(_artistsAll).slice(0, 10);
     } catch {
-      _artists = [];
+      _artistsAll = []; _artists = [];
     } finally {
       _artistsLoading = false;
     }
@@ -73,6 +149,19 @@
     _x9a.set(idx);
     _q8z.set(item);
     setTimeout(() => { _loadingId = null; }, 3000);
+  }
+
+  async function _playExtra(item, idx) {
+    _loadingId = item.videoId;
+    _p1k.set(_extra);
+    _x9a.set(idx);
+    _q8z.set(item);
+    setTimeout(() => { _loadingId = null; }, 3000);
+  }
+
+  function _openCollection(c) {
+    if (c._kind === 'Playlist') { goto('/search'); return; }
+    goto(`/album/${c.id}`);
   }
 
   function _openMenu(e, item) {
@@ -125,6 +214,21 @@
       </div>
 
       <button
+        on:click={_refresh}
+        disabled={_refreshing || _ld}
+        style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);
+          cursor:pointer;color:rgba(255,255,255,0.7);flex-shrink:0;transition:all .15s"
+        onmouseenter="this.style.background='rgba(255,255,255,0.18)';this.style.color='#FFFFFF';this.style.borderColor='rgba(255,255,255,0.4)'"
+        onmouseleave="this.style.background='rgba(255,255,255,0.07)';this.style.color='rgba(255,255,255,0.7)';this.style.borderColor='rgba(255,255,255,0.15)'"
+        aria-label="Segarkan rekomendasi"
+      >
+        <svg width="17" height="17" fill="currentColor" viewBox="0 0 24 24" class={_refreshing ? 'spin-refresh' : ''}>
+          <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+        </svg>
+      </button>
+
+      <button
         on:click={() => goto('/search')}
         style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
           background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);
@@ -141,35 +245,6 @@
     </div>
   </div>
 
-  <!-- ARTIS TOP: identity circles, horizontal scroll (fits naturally, kept as-is) -->
-  {#if _artistsLoading}
-    <div class="hscroll hide-scrollbar" style="margin-bottom:22px">
-      {#each Array(6) as _}
-        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
-          <div class="skeleton" style="width:64px;height:64px;border-radius:50%"></div>
-          <div class="skeleton" style="height:8px;width:50px;border-radius:4px"></div>
-        </div>
-      {/each}
-    </div>
-  {:else if _artists.length}
-    <div style="margin-bottom:22px">
-      <div class="section-title" style="margin-bottom:10px">
-        <span class="bar"></span>
-        <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Artis Top</span>
-      </div>
-      <div class="hscroll hide-scrollbar">
-        {#each _artists as a}
-          <button on:click={() => goto(`/artist/${a.id}`)}
-            style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:76px;background:none;border:none;cursor:pointer;padding:0">
-            <img src={a.cover} alt={a.title} style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.2)" loading="lazy" />
-            <span style="font-size:.66rem;font-weight:600;color:rgba(245,245,245,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block">{a.title}</span>
-          </button>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-  <!-- MOOD PICKER: pill tabs, horizontal scroll -->
   <div class="hscroll hide-scrollbar" style="margin-bottom:24px">
     {#each _moods as mood, i}
       <button on:click={() => _pickMood(i)}
@@ -184,11 +259,20 @@
   </div>
 
   {#if _ld}
-    <!-- Loading skeleton mirrors the real hierarchy: hero -> grid -> list -->
     <div class="skeleton" style="width:100%;aspect-ratio:16/10;border-radius:20px;margin-bottom:22px"></div>
     <div class="quick-grid" style="margin-bottom:22px">
       {#each Array(4) as _}
         <div class="skeleton" style="width:100%;aspect-ratio:1;border-radius:14px"></div>
+      {/each}
+    </div>
+    <div class="hscroll hide-scrollbar" style="margin-bottom:22px">
+      {#each Array(4) as _}
+        <div class="skeleton" style="width:110px;height:110px;border-radius:14px;flex-shrink:0"></div>
+      {/each}
+    </div>
+    <div class="hscroll hide-scrollbar" style="margin-bottom:22px">
+      {#each Array(4) as _}
+        <div class="skeleton" style="width:128px;height:128px;border-radius:12px;flex-shrink:0"></div>
       {/each}
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
@@ -211,7 +295,6 @@
 
   {:else}
 
-    <!-- FEATURED: one large hero card for the top pick of the active mood -->
     {#if _hero}
       {@const item = _hero.item}{@const idx = _hero.idx}
       <div style="margin-bottom:24px">
@@ -262,7 +345,6 @@
       </div>
     {/if}
 
-    <!-- REKOMENDASI CEPAT: compact 2-column grid of square cards, distinct from the list below -->
     {#if _quick.length}
       <div style="margin-bottom:24px">
         <div class="section-title" style="margin-bottom:10px">
@@ -311,31 +393,102 @@
       </div>
     {/if}
 
-    <!-- ALBUM & SINGLE POPULER: horizontal carousel, reuses data already returned by the mood query -->
-    {#if _moodAlbums.length}
+    {#if _extra.length}
       <div style="margin-bottom:24px">
         <div class="section-title" style="margin-bottom:10px">
           <span class="bar"></span>
-          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Album &amp; Single Populer</span>
+          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Vibes {_extraLabel}</span>
         </div>
         <div class="hscroll hide-scrollbar">
-          {#each _moodAlbums as al}
-            <button on:click={() => goto(`/album/${al.id}`)}
-              style="background:none;border:none;cursor:pointer;text-align:left;width:128px;flex-shrink:0;padding:0">
-              <img src={al.cover} alt={al.title} style="width:128px;height:128px;border-radius:12px;object-fit:cover;display:block;margin-bottom:8px" loading="lazy" />
-              <p style="font-size:.74rem;font-weight:700;color:#F5F5F5;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.title}</p>
-              <p style="font-size:.65rem;color:rgba(245,245,245,.4);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{al.artist}</p>
+          {#each _extra as item, i}
+            <div class="glass-card animate-card-up mix-card"
+              style="border-radius:14px;overflow:hidden;position:relative;cursor:pointer;flex-shrink:0;animation-delay:{i*35}ms;
+                {$_q8z?.videoId === item.videoId ? 'border-color:rgba(255,255,255,.4);box-shadow:0 0 16px rgba(255,255,255,.13)' : ''}"
+              role="button" tabindex="0"
+              on:click={() => _playExtra(item, i)} on:keydown={e => e.key === 'Enter' && _playExtra(item, i)}>
+              <img src={item.thumbnail} alt={item.title} class="mix-img" loading="lazy" />
+              <div class="mix-scrim"></div>
+
+              {#if _loadingId === item.videoId}
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,10,10,.4)">
+                  <div class="mini-spin"></div>
+                </div>
+              {:else if $_q8z?.videoId === item.videoId}
+                <div style="position:absolute;top:8px;right:8px;display:flex;align-items:flex-end;gap:2px;height:12px">
+                  <div class="eq-bar-nm animate-eq-a" style="height:6px"></div>
+                  <div class="eq-bar-nm animate-eq-b" style="height:10px"></div>
+                  <div class="eq-bar-nm animate-eq-c" style="height:5px"></div>
+                </div>
+              {/if}
+
+              <div class="mix-body">
+                <p style="font-size:.7rem;font-weight:700;line-height:1.25;margin:0 0 2px;
+                  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+                  color:{$_q8z?.videoId === item.videoId ? '#FFFFFF' : '#F5F5F5'}">{item.title}</p>
+                {#if item.author}
+                  <p style="font-size:.6rem;font-weight:600;color:rgba(245,245,245,.55);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{item.author}</p>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    {#if _collection.length}
+      <div style="margin-bottom:24px">
+        <div class="section-title" style="margin-bottom:10px">
+          <span class="bar"></span>
+          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Playlist &amp; Album Pilihan</span>
+        </div>
+        <div class="hscroll hide-scrollbar">
+          {#each _collection as c}
+            <button on:click={() => _openCollection(c)}
+              style="background:none;border:none;cursor:pointer;text-align:left;width:128px;flex-shrink:0;padding:0;position:relative">
+              <div style="position:relative">
+                <img src={c.cover} alt={c.title} style="width:128px;height:128px;border-radius:12px;object-fit:cover;display:block;margin-bottom:8px" loading="lazy" />
+                <span style="position:absolute;top:6px;left:6px;font-size:.55rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+                  color:#F5F5F5;background:rgba(10,10,10,.6);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:2px 8px">{c._kind}</span>
+              </div>
+              <p style="font-size:.74rem;font-weight:700;color:#F5F5F5;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{c.title}</p>
+              <p style="font-size:.65rem;color:rgba(245,245,245,.4);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{c.artist}</p>
             </button>
           {/each}
         </div>
       </div>
     {/if}
 
-    <!-- UNTUKMU: full list, compact rows, highest density section by design -->
+    {#if _artistsLoading}
+      <div class="hscroll hide-scrollbar" style="margin-bottom:22px">
+        {#each Array(6) as _}
+          <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
+            <div class="skeleton" style="width:64px;height:64px;border-radius:50%"></div>
+            <div class="skeleton" style="height:8px;width:50px;border-radius:4px"></div>
+          </div>
+        {/each}
+      </div>
+    {:else if _artists.length}
+      <div style="margin-bottom:24px">
+        <div class="section-title" style="margin-bottom:10px">
+          <span class="bar"></span>
+          <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Artis Top</span>
+        </div>
+        <div class="hscroll hide-scrollbar">
+          {#each _artists as a}
+            <button on:click={() => goto(`/artist/${a.id}`)}
+              style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:76px;background:none;border:none;cursor:pointer;padding:0">
+              <img src={a.cover} alt={a.title} style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.2)" loading="lazy" />
+              <span style="font-size:.66rem;font-weight:600;color:rgba(245,245,245,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block">{a.title}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     {#if _rest.length}
       <div class="section-title" style="margin-bottom:10px">
         <span class="bar"></span>
-        <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Untukmu</span>
+        <span style="font-size:.85rem;font-weight:700;color:#F5F5F5">Campuran Untukmu</span>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:8px">
@@ -420,7 +573,9 @@
   }
   @keyframes _mspin { to { transform: rotate(360deg); } }
 
-  /* Featured hero card */
+  .spin-refresh { animation: _refreshspin .6s linear infinite; }
+  @keyframes _refreshspin { to { transform: rotate(360deg); } }
+
   .hero-card { width: 100%; aspect-ratio: 16 / 11; }
   .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   .hero-scrim {
@@ -435,7 +590,6 @@
     box-shadow: 0 4px 16px rgba(255,255,255,.35);
   }
 
-  /* Rekomendasi cepat grid */
   .quick-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -448,6 +602,14 @@
     background: linear-gradient(180deg, rgba(10,10,10,.05) 0%, rgba(10,10,10,.25) 45%, rgba(10,10,10,.88) 100%);
   }
   .quick-body { position: absolute; left: 10px; right: 10px; bottom: 9px; min-width: 0; }
+
+  .mix-card { width: 118px; height: 118px; }
+  .mix-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mix-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,10,10,.05) 0%, rgba(10,10,10,.3) 45%, rgba(10,10,10,.9) 100%);
+  }
+  .mix-body { position: absolute; left: 9px; right: 9px; bottom: 8px; min-width: 0; }
 
   @media (min-width: 420px) {
     .hero-body { right: 80px; }
