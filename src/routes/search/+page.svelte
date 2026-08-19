@@ -1,5 +1,6 @@
 <script>
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { _g9 } from '$lib/api.js';
   import { _q8z, _p1k, _x9a, _searchQuery, _searchResults, _showMenu, _playlists, _searchTab, _searchAlbums, _searchArtists, _searchInit } from '$lib/store.js';
   import { getPlaylists } from '$lib/playlist.js';
@@ -59,7 +60,53 @@
 
   onMount(() => {
     _history = _loadHistory();
+
+    // Sinkronkan pencarian dari URL, mis. dibuka via /search?q=beautiful+things
+    const urlQ = $page.url.searchParams.get('q');
+    if (urlQ && urlQ.trim()) {
+      const q = urlQ.trim();
+      _searchQuery.set(q);
+      _qv = q;
+      _ld = true;
+      _init = true;
+      _searchInit.set(true);
+      _runSearch(q);
+    }
   });
+
+  // Ubah URL search agar query pencarian ikut tampil, mis. /search?q=beautiful+things
+  function _syncUrl(q) {
+    const target = q ? `/search?q=${encodeURIComponent(q)}` : '/search';
+    const current = `${$page.url.pathname}${$page.url.search}`;
+    if (current === target) return;
+    goto(target, { replaceState: true, noScroll: true, keepFocus: true });
+  }
+
+  async function _runSearch(q) {
+    const _reqVal = q;
+    try {
+      const r = await _g9(q);
+      if (_qv !== _reqVal) return;
+      _ds = r.songs || [];
+      _albums = r.albums || [];
+      _artists = r.artists || [];
+      _searchResults.set(_ds);
+      _searchAlbums.set(_albums);
+      _searchArtists.set(_artists);
+      _p1k.set(_ds);
+      _syncUrl(q);
+    } catch (e) {
+      if (e?.name === 'AbortError') return;
+      if (_qv !== _reqVal) return;
+      _ds = []; _albums = []; _artists = [];
+      _searchResults.set([]);
+      _searchAlbums.set([]);
+      _searchArtists.set([]);
+      _syncUrl(q);
+    } finally {
+      if (_qv === _reqVal) _ld = false;
+    }
+  }
 
   const unsubQ = _searchQuery.subscribe(v => { _qv = v; });
   const unsubR = _searchResults.subscribe(v => { _ds = v; });
@@ -98,6 +145,7 @@
       _searchInit.set(false);
       if (_t) clearTimeout(_t);
       if (_sugT) clearTimeout(_sugT);
+      _syncUrl('');
       return;
     }
 
@@ -117,29 +165,7 @@
     _ld = true;
     _init = true;
     _searchInit.set(true);
-    _t = setTimeout(async () => {
-      const _reqVal = val;
-      try {
-        const r = await _g9(val);
-        if (_qv !== _reqVal) return; // superseded by a newer query while this was in flight
-        _ds = r.songs || [];
-        _albums = r.albums || [];
-        _artists = r.artists || [];
-        _searchResults.set(_ds);
-        _searchAlbums.set(_albums);
-        _searchArtists.set(_artists);
-        _p1k.set(_ds);
-      } catch (e) {
-        if (e?.name === 'AbortError') return; // cancelled because the user kept typing, not a real error
-        if (_qv !== _reqVal) return;
-        _ds = []; _albums = []; _artists = [];
-        _searchResults.set([]);
-        _searchAlbums.set([]);
-        _searchArtists.set([]);
-      } finally {
-        if (_qv === _reqVal) _ld = false;
-      }
-    }, 300);
+    _t = setTimeout(() => { _runSearch(val); }, 300);
   }
 
   function _selectSuggestion(q) {
@@ -151,29 +177,7 @@
     _init = true;
     _searchInit.set(true);
     if (_t) clearTimeout(_t);
-    _t = setTimeout(async () => {
-      const _reqVal = q;
-      try {
-        const r = await _g9(q);
-        if (_qv !== _reqVal) return;
-        _ds = r.songs || [];
-        _albums = r.albums || [];
-        _artists = r.artists || [];
-        _searchResults.set(_ds);
-        _searchAlbums.set(_albums);
-        _searchArtists.set(_artists);
-        _p1k.set(_ds);
-      } catch (e) {
-        if (e?.name === 'AbortError') return;
-        if (_qv !== _reqVal) return;
-        _ds = []; _albums = []; _artists = [];
-        _searchResults.set([]);
-        _searchAlbums.set([]);
-        _searchArtists.set([]);
-      } finally {
-        if (_qv === _reqVal) _ld = false;
-      }
-    }, 0);
+    _t = setTimeout(() => { _runSearch(q); }, 0);
   }
 
   function _setTab(t) { _tab = t; _searchTab.set(t); }
@@ -196,6 +200,7 @@
     _suggestions = { history: _history, api: [] };
     if (_t) clearTimeout(_t);
     if (_sugT) clearTimeout(_sugT);
+    _syncUrl('');
   }
 
   function _onFocus() {
