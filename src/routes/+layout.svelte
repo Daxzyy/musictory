@@ -9,6 +9,15 @@
 
   $: _rt = $page.url.pathname;
 
+  const _navItems = [
+    ['/', 'Beranda', 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z'],
+    ['/search', 'Cari', 'M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'],
+    ['/library', 'Library', 'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z'],
+    ['/tentang', 'Tentang', 'M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-11h2V7h-2v2z']
+  ];
+
+  $: _activeIdx = Math.max(0, _navItems.findIndex(([p]) => p === _rt));
+
   function _setBodyLock(locked) {
     if (typeof document === 'undefined') return;
     document.body.style.overflow = locked ? 'hidden' : '';
@@ -921,26 +930,131 @@
   </div>
 {/if}
 
-<nav class="nav-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:50">
-  <div style="max-width:560px;margin:0 auto;display:flex">
-    {#each [
-      ['/', 'Beranda', 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z'],
-      ['/search', 'Cari', 'M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'],
-      ['/library', 'Library', 'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z'],
-      ['/tentang', 'Tentang', 'M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-11h2V7h-2v2z']
-    ] as [p, l, ic]}
-      <button on:click={() => goto(p)}
-        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0 8px;
-          background:none;border:none;cursor:pointer;transition:color .2s;
-          color:{_rt===p ? '#FFFFFF' : 'rgba(245,245,245,.38)'}">
-        <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d={ic}/></svg>
-        <span style="font-size:10px;font-weight:600;letter-spacing:.04em">{l}</span>
-      </button>
-    {/each}
+<nav class="nav-bar liquid-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:50">
+  <div class="liquid-nav-inner" style="max-width:560px;margin:0 auto;--nav-count:{_navItems.length}">
+    <ul class="liquid-nav-list">
+      {#each _navItems as [p, l, ic], i}
+        <li class="liquid-nav-item {_rt === p ? 'active' : ''}">
+          <button on:click={() => goto(p)} class="liquid-nav-link">
+            <span class="liquid-nav-icon">
+              <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d={ic}/></svg>
+            </span>
+            <span class="liquid-nav-text">{l}</span>
+          </button>
+        </li>
+      {/each}
+      <div class="liquid-nav-indicator" style="transform:translateX(calc(100% * {_activeIdx}))"></div>
+    </ul>
   </div>
 </nav>
 
 <style>
+  .liquid-nav { overflow: visible; padding-top: 26px; }
+
+  .liquid-nav-inner {
+    position: relative;
+    height: 64px;
+    overflow: visible;
+  }
+
+  .liquid-nav-list {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    list-style: none;
+  }
+
+  .liquid-nav-item {
+    position: relative;
+    flex: 1 1 0;
+    height: 64px;
+    z-index: 1;
+  }
+
+  .liquid-nav-link {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .liquid-nav-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(245,245,245,.38);
+    transition: transform .5s cubic-bezier(.5,-.3,.5,1.3), color .4s ease;
+  }
+
+  .liquid-nav-item.active .liquid-nav-icon {
+    transform: translateY(-30px);
+    color: var(--bg);
+  }
+
+  .liquid-nav-text {
+    position: absolute;
+    bottom: 9px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: #FFFFFF;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: .5s;
+  }
+
+  .liquid-nav-item.active .liquid-nav-text {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .liquid-nav-indicator {
+    position: absolute;
+    top: -26px;
+    left: 0;
+    width: calc(100% / var(--nav-count));
+    height: 56px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-soft));
+    border-radius: 50%;
+    border: 6px solid var(--bg);
+    box-shadow: 0 6px 16px rgba(0,0,0,.4);
+    transition: transform .5s cubic-bezier(.5,-.3,.5,1.3);
+    z-index: 0;
+  }
+
+  .liquid-nav-indicator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -20px;
+    width: 20px;
+    height: 20px;
+    background: transparent;
+    border-top-right-radius: 20px;
+    box-shadow: 1px -10px 0 0 var(--bg);
+  }
+
+  .liquid-nav-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -20px;
+    width: 20px;
+    height: 20px;
+    background: transparent;
+    border-top-left-radius: 20px;
+    box-shadow: -1px -10px 0 0 var(--bg);
+  }
+
   @keyframes _sp   { to { transform: rotate(360deg); } }
   @keyframes _ring { to { transform: rotate(360deg); } }
   @keyframes _spin { to { transform: rotate(360deg); } }
