@@ -943,17 +943,17 @@
           </button>
         </li>
       {/each}
-      <div class="liquid-nav-indicator" style="transform:translateX(calc(100% * {_activeIdx}))"></div>
+      <div class="liquid-nav-indicator" style="left:calc((100% / var(--nav-count)) * {_activeIdx + 0.5})"></div>
     </ul>
   </div>
 </nav>
 
 <style>
-  .liquid-nav { overflow: visible; padding-top: 26px; }
+  .liquid-nav { overflow: visible; padding-top: 18px; }
 
   .liquid-nav-inner {
     position: relative;
-    height: 64px;
+    height: 52px;
     overflow: visible;
   }
 
@@ -968,7 +968,7 @@
   .liquid-nav-item {
     position: relative;
     flex: 1 1 0;
-    height: 64px;
+    height: 52px;
     z-index: 1;
   }
 
@@ -992,24 +992,29 @@
     align-items: center;
     justify-content: center;
     color: rgba(245,245,245,.38);
-    transition: transform .5s cubic-bezier(.5,-.3,.5,1.3), color .4s ease;
+    transition: transform .4s cubic-bezier(.5,-.3,.5,1.3), color .3s ease;
+  }
+
+  .liquid-nav-icon svg {
+    width: 19px;
+    height: 19px;
   }
 
   .liquid-nav-item.active .liquid-nav-icon {
-    transform: translateY(-30px);
+    transform: translateY(-20px);
     color: var(--bg);
   }
 
   .liquid-nav-text {
     position: absolute;
-    bottom: 9px;
-    font-size: 10px;
+    bottom: 6px;
+    font-size: 9px;
     font-weight: 600;
-    letter-spacing: .04em;
+    letter-spacing: .03em;
     color: #FFFFFF;
     opacity: 0;
-    transform: translateY(10px);
-    transition: .5s;
+    transform: translateY(8px);
+    transition: .4s;
   }
 
   .liquid-nav-item.active .liquid-nav-text {
@@ -1019,15 +1024,15 @@
 
   .liquid-nav-indicator {
     position: absolute;
-    top: -26px;
-    left: 0;
-    width: calc(100% / var(--nav-count));
-    height: 56px;
+    top: -16px;
+    width: 44px;
+    height: 44px;
+    transform: translateX(-50%);
     background: linear-gradient(135deg, var(--gold), var(--gold-soft));
     border-radius: 50%;
-    border: 6px solid var(--bg);
-    box-shadow: 0 6px 16px rgba(0,0,0,.4);
-    transition: transform .5s cubic-bezier(.5,-.3,.5,1.3);
+    border: 4px solid var(--bg);
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+    transition: left .4s cubic-bezier(.5,-.3,.5,1.3);
     z-index: 0;
   }
 
@@ -1035,24 +1040,24 @@
     content: '';
     position: absolute;
     top: 50%;
-    left: -20px;
-    width: 20px;
-    height: 20px;
+    left: -14px;
+    width: 14px;
+    height: 14px;
     background: transparent;
-    border-top-right-radius: 20px;
-    box-shadow: 1px -10px 0 0 var(--bg);
+    border-top-right-radius: 14px;
+    box-shadow: 1px -7px 0 0 var(--bg);
   }
 
   .liquid-nav-indicator::after {
     content: '';
     position: absolute;
     top: 50%;
-    right: -20px;
-    width: 20px;
-    height: 20px;
+    right: -14px;
+    width: 14px;
+    height: 14px;
     background: transparent;
-    border-top-left-radius: 20px;
-    box-shadow: -1px -10px 0 0 var(--bg);
+    border-top-left-radius: 14px;
+    box-shadow: -1px -7px 0 0 var(--bg);
   }
 
   @keyframes _sp   { to { transform: rotate(360deg); } }
