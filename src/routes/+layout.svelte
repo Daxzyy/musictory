@@ -930,14 +930,14 @@
   </div>
 {/if}
 
-<nav class="nav-bar liquid-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:50">
-  <div class="liquid-nav-inner" style="max-width:560px;margin:0 auto;--nav-count:{_navItems.length}">
+<nav class="liquid-nav" style="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:50">
+  <div class="liquid-nav-inner" style="--nav-count:{_navItems.length}">
     <ul class="liquid-nav-list">
       {#each _navItems as [p, l, ic], i}
         <li class="liquid-nav-item {_rt === p ? 'active' : ''}">
           <button on:click={() => goto(p)} class="liquid-nav-link">
             <span class="liquid-nav-icon">
-              <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d={ic}/></svg>
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d={ic}/></svg>
             </span>
             <span class="liquid-nav-text">{l}</span>
           </button>
@@ -949,25 +949,29 @@
 </nav>
 
 <style>
-  .liquid-nav { overflow: visible; padding-top: 18px; }
+  .liquid-nav { overflow: visible; }
 
   .liquid-nav-inner {
     position: relative;
     height: 52px;
     overflow: visible;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.45);
+    padding: 0 4px;
   }
 
   .liquid-nav-list {
     position: relative;
     display: flex;
-    width: 100%;
     height: 100%;
     list-style: none;
   }
 
   .liquid-nav-item {
     position: relative;
-    flex: 1 1 0;
+    width: 60px;
     height: 52px;
     z-index: 1;
   }
@@ -996,23 +1000,24 @@
   }
 
   .liquid-nav-icon svg {
-    width: 19px;
-    height: 19px;
+    width: 18px;
+    height: 18px;
   }
 
   .liquid-nav-item.active .liquid-nav-icon {
-    transform: translateY(-20px);
+    transform: translateY(-19px);
     color: var(--bg);
   }
 
   .liquid-nav-text {
     position: absolute;
-    bottom: 6px;
-    font-size: 9px;
+    bottom: 5px;
+    font-size: 8.5px;
     font-weight: 600;
     letter-spacing: .03em;
     color: #FFFFFF;
     opacity: 0;
+    white-space: nowrap;
     transform: translateY(8px);
     transition: .4s;
   }
@@ -1024,9 +1029,9 @@
 
   .liquid-nav-indicator {
     position: absolute;
-    top: -16px;
-    width: 44px;
-    height: 44px;
+    top: -14px;
+    width: 42px;
+    height: 42px;
     transform: translateX(-50%);
     background: linear-gradient(135deg, var(--gold), var(--gold-soft));
     border-radius: 50%;
@@ -1040,24 +1045,24 @@
     content: '';
     position: absolute;
     top: 50%;
-    left: -14px;
-    width: 14px;
-    height: 14px;
+    left: -13px;
+    width: 13px;
+    height: 13px;
     background: transparent;
-    border-top-right-radius: 14px;
-    box-shadow: 1px -7px 0 0 var(--bg);
+    border-top-right-radius: 13px;
+    box-shadow: 1px -6px 0 0 var(--bg);
   }
 
   .liquid-nav-indicator::after {
     content: '';
     position: absolute;
     top: 50%;
-    right: -14px;
-    width: 14px;
-    height: 14px;
+    right: -13px;
+    width: 13px;
+    height: 13px;
     background: transparent;
-    border-top-left-radius: 14px;
-    box-shadow: -1px -7px 0 0 var(--bg);
+    border-top-left-radius: 13px;
+    box-shadow: -1px -6px 0 0 var(--bg);
   }
 
   @keyframes _sp   { to { transform: rotate(360deg); } }
